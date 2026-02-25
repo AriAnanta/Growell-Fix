@@ -56,6 +56,7 @@ const TABLES = [
     nama_ayah VARCHAR(100),
     orang_tua_id INT,
     posyandu_id INT,
+    kelurahan VARCHAR(100),
     alamat TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -322,7 +323,46 @@ const TABLES = [
   `CREATE INDEX idx_notifications_user ON notifications(user_id, is_read)`,
 
   // ALTER for existing databases (add is_edited if missing)
-  `ALTER TABLE pesan_konsultasi ADD COLUMN is_edited BOOLEAN DEFAULT FALSE`
+  `ALTER TABLE pesan_konsultasi ADD COLUMN is_edited BOOLEAN DEFAULT FALSE`,
+
+  // ALTER for existing databases — add kelurahan to balita
+  `ALTER TABLE balita ADD COLUMN kelurahan VARCHAR(100)`,
+
+  // ALTER for existing databases — add free-text posyandu name to balita (fallback when posyandu FK is null)
+  `ALTER TABLE balita ADD COLUMN nama_posyandu VARCHAR(100) NULL`,
+
+  // ALTER for existing databases — add catatan_rekomendasi to pengukuran
+  `ALTER TABLE pengukuran ADD COLUMN catatan_rekomendasi TEXT`,
+
+  // ── Pengukuran: kondisi BB bulan lalu (from kader form) ──
+  `ALTER TABLE pengukuran ADD COLUMN kondisi_bb_bulan_lalu VARCHAR(30) NULL AFTER lingkar_kepala`,
+
+  // ── Survey balita: text-version columns for fields that were incorrectly typed as BOOLEAN/FLOAT ──
+  // These preserve the full select values instead of forcing boolean/numeric coercion
+
+  // Section 4 — Suplemen kehamilan: was is_suplemen_kehamilan BOOLEAN
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_suplemen_kehamilan VARCHAR(50) NULL AFTER is_suplemen_kehamilan`,
+
+  // Section 5 — MP-ASI hewani: was is_mpasi_hewani BOOLEAN
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_mpasi_hewani VARCHAR(60) NULL AFTER is_mpasi_hewani`,
+
+  // Section 6 — Tablet besi anak: was is_tablet_besi_anak BOOLEAN
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_tablet_besi VARCHAR(30) NULL AFTER is_tablet_besi_anak`,
+
+  // Section 8 — Konsumsi manis: was is_konsumsi_manis_berlebih BOOLEAN
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_konsumsi_manis VARCHAR(60) NULL AFTER is_konsumsi_manis_berlebih`,
+
+  // Section 9 — Durasi aktivitas luar: was FLOAT (stores hours), add text label
+  `ALTER TABLE survey_balita ADD COLUMN durasi_aktivitas_luar_ket VARCHAR(60) NULL AFTER durasi_aktivitas_luar`,
+
+  // Section 9 — Pengetahuan gizi ibu: was skor_pengetahuan_ibu FLOAT (data was NULL because _toFloat('Baik') = null)
+  `ALTER TABLE survey_balita ADD COLUMN pengetahuan_gizi_ibu VARCHAR(50) NULL AFTER skor_pengetahuan_ibu`,
+
+  // Section 10 — Paham makanan sehat: was is_paham_makanan_sehat BOOLEAN
+  `ALTER TABLE survey_balita ADD COLUMN tingkat_paham_makanan VARCHAR(60) NULL AFTER is_paham_makanan_sehat`,
+
+  // Section 10 — Frekuensi posyandu: was ONLY stored as INT (via mapping), add raw text label
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_posyandu VARCHAR(60) NULL AFTER frekuensi_posyandu_bulan`
 ];
 
 async function migrate() {

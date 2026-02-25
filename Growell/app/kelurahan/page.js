@@ -137,7 +137,7 @@ export default function KelurahanDashboard() {
     return () => document.removeEventListener('mousedown', h);
   }, [profileOpen]);
 
-  const handleLogout = () => { clearAuth(); router.push('/login'); };
+  const handleLogout = async () => { await clearAuth(); router.push('/login'); };
 
   // ── Chart color themes ──
   const wastingColors = ['#10b981', '#fbbf24', '#ef4444', '#3b82f6', '#9ca3af'];

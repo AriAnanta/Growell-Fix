@@ -1,45 +1,56 @@
-// Client-side auth utility for Next.js frontend
-const AUTH_KEY = 'growell_auth';
-const TOKEN_KEY = 'growell_token';
+/**
+ * Client-side auth utility — Cookie-based (no localStorage)
+ *
+ * Two cookies are used:
+ *   growell_token  — HTTP-only, not readable by JS (set by server, secure JWT)
+ *   growell_user   — Readable by JS, holds display info (nama, role, etc.)
+ *
+ * Authentication state is maintained via these cookies across all browser tabs
+ * and survives page refreshes without any localStorage dependency.
+ */
 
-export const saveAuth = (userData, token) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+// Read a non-httponly cookie by name
+function readCookie(name) {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Returns the stored user profile object, or null if not logged in */
+export const getUserData = () => {
+  const raw = readCookie('growell_user');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
 };
 
-export const getAuth = () => {
-  if (typeof window === 'undefined') return null;
-  const authData = localStorage.getItem(AUTH_KEY);
-  return authData ? JSON.parse(authData) : null;
-};
+/** True if a valid user session cookie exists */
+export const isAuthenticated = () => getUserData() !== null;
 
-export const getToken = () => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
-};
+/**
+ * Clears both session cookies by calling the logout API.
+ * Returns a Promise — always await this before navigating to /login
+ * so the Set-Cookie:expired headers arrive BEFORE the middleware checks cookies.
+ */
+export const clearAuth = () =>
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
 
-export const isAuthenticated = () => getAuth() !== null && getToken() !== null;
-
-export const clearAuth = () => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(TOKEN_KEY);
-};
-
-export const getUserData = () => getAuth();
-
-// Helper to make authenticated API calls
+/**
+ * Authenticated fetch — sends cookies automatically via credentials: 'include'.
+ * No manual token attachment needed; the browser handles the HTTP-only cookie.
+ */
 export const apiFetch = async (url, options = {}) => {
-  const token = getToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+  const res = await fetch(url, {
+    credentials: 'include',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
 
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     clearAuth();
     if (typeof window !== 'undefined') {
       window.location.href = '/login';

@@ -23,20 +23,25 @@ export function verifyToken(token) {
 }
 
 /**
- * Extract user from Authorization header in a Next.js API route
- * Returns user object or null
+ * Extract user from request — reads JWT from the growell_token cookie (primary)
+ * or falls back to the Authorization: Bearer header (for API clients).
  */
 export async function getAuthUser(request) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  // 1. Cookie (set by login route — HTTP-only, secure)
+  let token = request.cookies?.get?.('growell_token')?.value;
+
+  // 2. Authorization header fallback (API clients, curl, etc.)
+  if (!token) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) return null;
+
   const decoded = verifyToken(token);
-  if (!decoded) {
-    return null;
-  }
+  if (!decoded) return null;
 
   const [users] = await pool.query(
     `SELECT id, uuid, nama, email, role, no_telepon, alamat, foto_profil, posyandu_id, is_active, is_new_user 

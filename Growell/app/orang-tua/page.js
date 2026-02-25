@@ -27,7 +27,7 @@ export default function OrangTuaDashboard() {
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [profileDropdownOpen]);
 
-  const handleLogout = () => { clearAuth(); router.replace('/login'); };
+  const handleLogout = async () => { await clearAuth(); router.replace('/login'); };
 
   if (!userData) return null;
 

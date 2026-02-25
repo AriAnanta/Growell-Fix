@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
-import { saveAuth } from '@/utils/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +25,6 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login gagal');
-      saveAuth(data.user, data.token);
       const role = data.user.role;
       if (role === 'orang_tua') router.push('/orang-tua');
       else if (role === 'ahli_gizi') router.push('/konsultasi');

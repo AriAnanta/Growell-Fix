@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/growell-logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

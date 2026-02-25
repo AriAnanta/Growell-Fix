@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import CustomDropdown from '@/components/forms/CustomDropdown';
+import SearchableBalitaDropdown from '@/components/forms/SearchableBalitaDropdown';
 import { useToast } from '@/components/common/Toast';
 import { isAuthenticated, getUserData, clearAuth } from '@/utils/auth';
 
@@ -42,17 +43,27 @@ function ParentFormPage() {
   const [submitError, setSubmitError] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
+  // Balita dropdown & selection
+  const [balitaList, setBalitaList] = useState([]);
+  const [isLoadingBalita, setIsLoadingBalita] = useState(false);
+  const [selectedBalita, setSelectedBalita] = useState(null); // full balita object
+
+  // Post-submit prediction display & rekomendasi update
+  const [predictionData, setPredictionData] = useState(null);   // { bbtb, bbu, tbu }
+  const [rekomendasiData, setRekomendasiData] = useState(null); // { rekomendasi_utama, ... }
+  const [isUpdatingRek, setIsUpdatingRek] = useState(false);
+
   // ─── Form Structure ─────────────────────────────────
   const formStructure = useMemo(() => [
     {
       title: "Identitas & Lokasi", icon: "1", color: "cyan",
       questions: [
-        { key: 'namaKecamatan', label: '1. Nama Kecamatan yang ditempati?', type: 'text', placeholder: 'Tulis nama kecamatan...' },
+        { key: 'namaBalita', label: '4. Nama lengkap balita *', type: 'balita_select', fullWidth: true, placeholder: 'Cari & pilih nama balita dari daftar...' },
+        { key: 'namaOrangTua', label: '3. Nama lengkap orang tua balita *', type: 'text', placeholder: 'Terisi otomatis setelah pilih balita', readonly: true },
+        { key: 'namaKecamatan', label: '1. Nama Kecamatan yang ditempati?', type: 'text', placeholder: 'Astananyar', readonly: true },
         { key: 'namaPosyandu', label: '2. Nama Posyandu yang dikunjungi?', type: 'text' },
-        { key: 'namaOrangTua', label: '3. Nama lengkap orang tua balita *', type: 'text', placeholder: 'Wajib nama lengkap (untuk pencocokan data)' },
-        { key: 'namaBalita', label: '4. Nama lengkap balita *', type: 'text', placeholder: 'Wajib nama lengkap (untuk pencocokan data)' },
-        { key: 'namaKelurahan', label: '5. Nama Kelurahan', type: 'select', options: ['Cibadak', 'Karanganyar', 'Nyengseret', 'Panjunan', 'Pelindung Hewan', 'Karasak'] },
-        { key: 'tanggalLahirBalita', label: '7. Tanggal Lahir Balita', type: 'date' },
+        { key: 'namaKelurahan', label: '5. Nama Kelurahan', type: 'text', placeholder: 'Terisi otomatis setelah pilih balita', readonly: true },
+        { key: 'tanggalLahirBalita', label: '7. Tanggal Lahir Balita', type: 'date', readonly: true },
       ]
     },
     {
@@ -181,6 +192,8 @@ function ParentFormPage() {
   const initialState = useMemo(() => {
     const state = {};
     formStructure.forEach(s => s.questions.forEach(q => { state[q.key] = q.type === 'multiselect' ? [] : ''; }));
+    // Fixed defaults
+    state.namaKecamatan = 'Astananyar';
     return state;
   }, [formStructure]);
 
@@ -194,7 +207,7 @@ function ParentFormPage() {
         if (!ud) return;
 
         const res = await fetch('/api/survey/me', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('growell_token')}` }
+          credentials: 'include'
         });
         
         if (res.ok) {
@@ -214,6 +227,64 @@ function ParentFormPage() {
     fetchHistory();
   }, []);
 
+  // Fetch balita list for the searchable dropdown
+  useEffect(() => {
+    const fetchBalitaList = async () => {
+      setIsLoadingBalita(true);
+      try {
+        const res = await fetch('/api/balita/search', {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setBalitaList(d.data || []);
+        }
+      } catch (e) {
+        console.warn('Gagal memuat daftar balita', e);
+      } finally {
+        setIsLoadingBalita(false);
+      }
+    };
+    fetchBalitaList();
+  }, []);
+
+  // Auto-select balita from list when history is restored (formData.namaBalita already set)
+  useEffect(() => {
+    if (balitaList.length > 0 && formData.namaBalita && !selectedBalita) {
+      const match = balitaList.find(
+        (b) => b.nama.toLowerCase().trim() === formData.namaBalita.toLowerCase().trim()
+      );
+      if (match) setSelectedBalita(match);
+    }
+  }, [balitaList, formData.namaBalita]);
+
+  // Handle balita selection from searchable dropdown
+  const handleBalitaSelect = (item) => {
+    if (!item) {
+      // Clear selection
+      setSelectedBalita(null);
+      setFormData(prev => ({
+        ...prev,
+        namaBalita: '',
+        namaOrangTua: '',
+        namaKecamatan: '',
+        namaKelurahan: '',
+        tanggalLahirBalita: '',
+      }));
+      return;
+    }
+    setSelectedBalita(item);
+    setFormData(prev => ({
+      ...prev,
+      namaBalita: item.nama || '',
+      namaOrangTua: item.nama_ibu || prev.namaOrangTua || '',
+      namaKecamatan: item.kecamatan || 'Astananyar',
+      namaKelurahan: item.kelurahan || prev.namaKelurahan || '',
+      namaPosyandu: item.posyandu_nama || prev.namaPosyandu || '',
+      tanggalLahirBalita: item.tanggal_lahir || prev.tanggalLahirBalita || '',
+    }));
+  };
+
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   const toggleMultiSelect = (key, option) => {
     setFormData(prev => {
@@ -221,7 +292,16 @@ function ParentFormPage() {
       return { ...prev, [key]: c.includes(option) ? c.filter(i => i !== option) : [...c, option] };
     });
   };
-  const handleReset = () => { setFormData(initialState); setIsComplete(false); setActiveSection(0); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const handleReset = () => {
+    setFormData(initialState);
+    setIsComplete(false);
+    setActiveSection(0);
+    setSelectedBalita(null);
+    setPredictionData(null);
+    setRekomendasiData(null);
+    setSubmitError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // ─── Submit ─────────────────────────
   const handleSubmit = async () => {
@@ -229,31 +309,91 @@ function ParentFormPage() {
     setIsSubmitting(true);
 
     try {
-      if (!formData.namaBalita || !formData.tanggalLahirBalita) {
-        throw new Error('Nama balita dan tanggal lahir wajib diisi.');
+      if (!selectedBalita) {
+        throw new Error('Pilih nama balita terlebih dahulu dari daftar dropdown.');
       }
 
-      // Send to Backend database for history tracking (safe across device/VPS)
+      // Send survey data with the resolved balita_uuid
       const dataToSave = { ...formData };
 
-      // Push to backend for History / Laporan Tumbuh Kembang 
-      // (This creates a new row safely keeping past histories)
       const res = await fetch('/api/survey', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('growell_token')}`
         },
-        body: JSON.stringify({ data: dataToSave })
+        credentials: 'include',
+        body: JSON.stringify({ balita_uuid: selectedBalita.uuid, data: dataToSave })
       });
 
       if (!res.ok) {
         const d = await res.json();
-        console.warn('Backend history save error:', d);
+        console.warn('Backend survey save error:', d);
+      }
+
+      // ── Show prediction result from selected balita's last measurement ──
+      if (selectedBalita.status_gizi_bbtb || selectedBalita.status_gizi_bbu || selectedBalita.status_gizi_tbu) {
+        setPredictionData({
+          bbtb: selectedBalita.status_gizi_bbtb || null,
+          bbu: selectedBalita.status_gizi_bbu || null,
+          tbu: selectedBalita.status_gizi_tbu || null,
+        });
+      }
+
+      // ── Call rekomendasi intervensi with full parent form data ──
+      setIsUpdatingRek(true);
+      try {
+        const mlUrl = process.env.NEXT_PUBLIC_ML_SERVICE_URL || 'http://localhost:8000';
+        const rekPayload = {
+          usia_bulan: selectedBalita.tanggal_lahir
+            ? Math.floor((Date.now() - new Date(selectedBalita.tanggal_lahir).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+            : 12,
+          berat_badan: 10, // Not in parent form; use placeholder
+          status_gizi_bb_tb: selectedBalita.status_gizi_bbtb || 'Gizi Baik',
+          status_gizi_tb_u: selectedBalita.status_gizi_tbu || 'Normal',
+          asi_eksklusif: formData.asiEksklusif === 'Ya',
+          konsumsi_protein_hewani: formData.mpasiHewani || 'Ya, setiap hari',
+          pola_asuh_makan: formData.polaAsuh || 'Responsive feeding',
+          riwayat_sakit_2minggu: formData.sakit2Minggu === 'Ya',
+          jenis_sanitasi: formData.sanitasi || 'Toilet dengan septic tank',
+          rutin_vitamin_a: !!formData.vitaminA,
+          rutin_posyandu: formData.rutinPosyandu === 'Rutin setiap bulan',
+        };
+
+        const rekRes = await fetch(`${mlUrl}/predict-rekomendasi`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rekPayload),
+        });
+
+        if (rekRes.ok) {
+          const rekData = await rekRes.json();
+          setRekomendasiData(rekData);
+
+          // Save updated rekomendasi to database
+          await fetch('/api/pengukuran/update-rekomendasi', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              balita_uuid: selectedBalita.uuid,
+              rekomendasi_utama: rekData.rekomendasi_utama,
+              rekomendasi_tambahan: [
+                ...(rekData.rekomendasi_tambahan || []),
+              ],
+              catatan_rekomendasi: rekData.catatan || null,
+            }),
+          });
+        }
+      } catch (rekErr) {
+        console.warn('Rekomendasi update error (non-fatal):', rekErr);
+      } finally {
+        setIsUpdatingRek(false);
       }
 
       setIsComplete(true);
-      toast.success('Data Berhasil Disimpan!', 'Data kesehatan anak telah tercatat dan dapat ditarik oleh kader.', 7000);
+      toast.success('Data Berhasil Disimpan!', 'Data kesehatan anak telah tercatat. Rekomendasi intervensi telah diperbarui.', 7000);
     } catch (err) {
       setSubmitError(err.message);
       toast.error('Gagal Menyimpan', err.message);
@@ -318,20 +458,101 @@ function ParentFormPage() {
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-3">
           <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="text-xs text-blue-700 leading-relaxed">
-            <strong>Penting:</strong> Pastikan nama lengkap anak dan orang tua ditulis sama persis dengan yang dicatat oleh kader di Posyandu, agar data Anda tercocokan secara otomatis.
+            <strong>Cara Pengisian:</strong> Pilih nama balita dari dropdown di bagian pertama. Data tanggal lahir, kelurahan, dan kecamatan akan terisi otomatis dari catatan kader. Selanjutnya lengkapi semua pertanyaan kesehatan.
           </div>
         </div>
 
         {/* ─── Completion State ─── */}
         {isComplete ? (
-          <div className="bg-white rounded-2xl border border-emerald-200 p-8 sm:p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
-              <CheckCircle2 size={32} className="text-emerald-500" />
+          <div className="space-y-5">
+            {/* Success header */}
+            <div className="bg-white rounded-2xl border border-emerald-200 p-8 sm:p-10 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
+                <CheckCircle2 size={32} className="text-emerald-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Formulir Berhasil Dikirim!</h3>
+              <p className="text-sm text-gray-500 max-w-md mx-auto mb-2">
+                Data kesehatan anak <strong>{selectedBalita?.nama || ''}</strong> telah berhasil disimpan.
+                Rekomendasi intervensi gizi telah diperbarui berdasarkan data yang Anda isi.
+              </p>
+              {isUpdatingRek && (
+                <p className="text-xs text-teal-600 flex items-center justify-center gap-1.5 mt-2">
+                  <Loader2 size={12} className="animate-spin" /> Memperbarui rekomendasi...
+                </p>
+              )}
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Formulir Berhasil Dikirim!</h3>
-            <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-              Terima kasih telah mengisi formulir. Data Anda akan dicocokan otomatis berdasarkan nama anak dengan data dari kader untuk menghasilkan prediksi status gizi.
-            </p>
+
+            {/* Prediction result */}
+            {predictionData && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                  Status Gizi {selectedBalita?.nama || 'Balita'} (Hasil Terbaru)
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'BB/TB (Wasting)', value: predictionData.bbtb, sub: 'Berat ↔ Tinggi' },
+                    { label: 'BB/U', value: predictionData.bbu, sub: 'Berat ↔ Umur' },
+                    { label: 'TB/U (Stunting)', value: predictionData.tbu, sub: 'Tinggi ↔ Umur' },
+                  ].map((r, i) => {
+                    const s = (r.value || '').toLowerCase();
+                    const color = s.includes('gizi baik') || s.includes('normal') || s.includes('berat badan normal')
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : s.includes('gizi buruk') || s.includes('sangat pendek') || s.includes('sangat kurang')
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : s.includes('gizi kurang') || s.includes('pendek') || s.includes('kurang')
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : s.includes('gizi lebih') || s.includes('tinggi') || s.includes('lebih')
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-gray-50 text-gray-600 border-gray-200';
+                    return (
+                      <div key={i} className={`rounded-xl p-4 border ${r.value ? color : 'bg-gray-50 border-gray-200'}`}>
+                        <p className="text-[10px] font-medium opacity-70 mb-1">{r.label}</p>
+                        <p className="text-sm font-bold">{r.value || '-'}</p>
+                        <p className="text-[10px] opacity-60 mt-0.5">{r.sub}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Rekomendasi intervensi */}
+            {rekomendasiData && (
+              <div className="bg-white rounded-2xl border border-violet-200 p-6">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-violet-50 text-violet-600 flex items-center justify-center text-[10px] font-bold">R</span>
+                  Rekomendasi Intervensi Gizi
+                </h3>
+                <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-xl p-5 space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-violet-500 uppercase tracking-wide mb-1">Rekomendasi Utama</p>
+                    <p className="text-base font-bold text-violet-900">{rekomendasiData.rekomendasi_utama}</p>
+                  </div>
+                  {rekomendasiData.rekomendasi_tambahan?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-violet-500 uppercase tracking-wide mb-2">Rekomendasi Tambahan</p>
+                      <ul className="space-y-1.5">
+                        {rekomendasiData.rekomendasi_tambahan.map((r, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-violet-800">
+                            <span className="w-5 h-5 rounded-md bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">{i + 1}</span>
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {rekomendasiData.catatan && (
+                    <div className="pt-3 border-t border-violet-200/50">
+                      <p className="text-xs font-medium text-violet-500 uppercase tracking-wide mb-1">Catatan</p>
+                      <p className="text-sm text-violet-700">{rekomendasiData.catatan}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button onClick={handleReset} className="px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition">Isi Untuk Anak Lain</button>
               <Link href="/" className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition text-center">Kembali ke Beranda</Link>
@@ -373,8 +594,40 @@ function ParentFormPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 {formStructure[activeSection].questions.map((q) => {
                   let input;
-                  if (q.type === 'date') {
-                    input = <CustomDatePicker name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih tanggal" defaultYear={new Date().getFullYear() - 2} />;
+                  if (q.type === 'balita_select') {
+                    // Special searchable dropdown for balita
+                    input = (
+                      <div>
+                        <SearchableBalitaDropdown
+                          items={balitaList}
+                          selected={selectedBalita?.uuid || null}
+                          onSelect={handleBalitaSelect}
+                          placeholder={isLoadingBalita ? 'Memuat daftar balita...' : (q.placeholder || 'Cari & pilih nama balita...')}
+                          disabled={isLoadingBalita}
+                        />
+                        {isLoadingBalita && (
+                          <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                            <Loader2 size={11} className="animate-spin" /> Memuat daftar balita…
+                          </p>
+                        )}
+                        {!isLoadingBalita && balitaList.length === 0 && (
+                          <p className="text-xs text-amber-600 mt-1.5">
+                            Belum ada data balita. Pastikan kader sudah menginput data anak terlebih dahulu.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  } else if (q.type === 'date') {
+                    // Format YYYY-MM-DD → dd/mm/yyyy without timezone offset bugs
+                    const fmtDate = (iso) => {
+                      if (!iso) return '';
+                      const parts = String(iso).split('T')[0].split('-');
+                      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                      return iso;
+                    };
+                    input = q.readonly
+                      ? <input type="text" value={fmtDate(formData[q.key])} readOnly className={`${inputClass} bg-gray-100 cursor-not-allowed`} placeholder={q.placeholder || 'Terisi otomatis'} />
+                      : <CustomDatePicker name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih tanggal" defaultYear={new Date().getFullYear() - 2} />;
                   } else if (q.type === 'yesno') {
                     input = <CustomDropdown name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih jawaban" options={[{ value: 'Ya', label: 'Ya' }, { value: 'Tidak', label: 'Tidak' }]} />;
                   } else if (q.type === 'select') {
@@ -392,7 +645,17 @@ function ParentFormPage() {
                       </div>
                     );
                   } else {
-                    input = <input type={q.type === 'number' ? 'number' : 'text'} step={q.type === 'number' ? '0.1' : undefined} name={q.key} value={formData[q.key]} onChange={handleChange} className={inputClass} placeholder={q.placeholder || "Tulis jawaban..."} />;
+                    // text, number — with optional readonly
+                    input = <input
+                      type={q.type === 'number' ? 'number' : 'text'}
+                      step={q.type === 'number' ? '0.1' : undefined}
+                      name={q.key}
+                      value={formData[q.key]}
+                      onChange={q.readonly ? undefined : handleChange}
+                      readOnly={!!q.readonly}
+                      className={`${inputClass} ${q.readonly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      placeholder={q.placeholder || (q.readonly ? 'Terisi otomatis' : 'Tulis jawaban...')}
+                    />;
                   }
 
                   return (

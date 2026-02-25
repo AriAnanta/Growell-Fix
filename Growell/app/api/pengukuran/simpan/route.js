@@ -21,6 +21,8 @@ export async function POST(request) {
       nama_ibu,
       berat_lahir,
       tinggi_lahir,
+      kelurahan,     // optional — saved to balita.kelurahan
+      nama_posyandu, // optional free-text posyandu name (fallback when posyandu_id is null)
       // Data pengukuran
       tanggal_pengukuran,
       berat_badan,
@@ -28,6 +30,7 @@ export async function POST(request) {
       lingkar_lengan,
       lingkar_kepala,
       catatan,
+      kondisi_bb_bulan_lalu,  // from kader form: naik/turun/tetap
       // Hasil prediksi ML
       status_gizi_bbu,
       status_gizi_tbu,
@@ -57,19 +60,24 @@ export async function POST(request) {
     if (existing.length > 0) {
       balitaId = existing[0].id;
       balitaUuid = existing[0].uuid;
-      // Assign posyandu if not yet set
-      if (posyandu_id) {
+      // Assign posyandu and kelurahan if not yet set
+      const updateFields = [];
+      const updateVals = [];
+      if (posyandu_id)   { updateFields.push('posyandu_id = COALESCE(posyandu_id, ?)');   updateVals.push(posyandu_id); }
+      if (kelurahan)     { updateFields.push('kelurahan = COALESCE(kelurahan, ?)');         updateVals.push(kelurahan); }
+      if (nama_posyandu) { updateFields.push('nama_posyandu = COALESCE(nama_posyandu, ?)'); updateVals.push(nama_posyandu); }
+      if (updateFields.length > 0) {
         await pool.query(
-          'UPDATE balita SET posyandu_id = COALESCE(posyandu_id, ?) WHERE id = ?',
-          [posyandu_id, balitaId]
+          `UPDATE balita SET ${updateFields.join(', ')} WHERE id = ?`,
+          [...updateVals, balitaId]
         );
       }
     } else {
       balitaUuid = uuidv4();
       const [newBalita] = await pool.query(
         `INSERT INTO balita
-           (uuid, nama, tanggal_lahir, jenis_kelamin, nama_ibu, berat_lahir, panjang_lahir, posyandu_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (uuid, nama, tanggal_lahir, jenis_kelamin, nama_ibu, berat_lahir, panjang_lahir, posyandu_id, kelurahan, nama_posyandu)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           balitaUuid,
           nama_balita,
@@ -79,21 +87,22 @@ export async function POST(request) {
           berat_lahir || null,
           tinggi_lahir || null,
           posyandu_id,
+          kelurahan || null,
+          nama_posyandu || null,
         ]
       );
       balitaId = newBalita.insertId;
     }
 
-    // ── Insert pengukuran with prediction results ──────────────────
     const pengUuid = uuidv4();
     const [result] = await pool.query(
       `INSERT INTO pengukuran
          (uuid, balita_id, tanggal_pengukuran, berat_badan, tinggi_badan,
-          lingkar_lengan, lingkar_kepala,
+          lingkar_lengan, lingkar_kepala, kondisi_bb_bulan_lalu,
           status_gizi_bbu, status_gizi_tbu, status_gizi_bbtb,
           rekomendasi_utama, rekomendasi_tambahan,
           kader_id, catatan)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         pengUuid,
         balitaId,
@@ -102,6 +111,7 @@ export async function POST(request) {
         tinggi_badan,
         lingkar_lengan || null,
         lingkar_kepala || null,
+        kondisi_bb_bulan_lalu || null,
         status_gizi_bbu || null,
         status_gizi_tbu || null,
         status_gizi_bbtb || null,

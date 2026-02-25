@@ -76,13 +76,7 @@ export default function KaderDashboard() {
     setUserData(u);
     fetchDashboardStats();
     fetchRecentData();
-    const saved = localStorage.getItem('kader_pending_queue');
-    if (saved) { try { setPendingQueue(JSON.parse(saved)); } catch {} }
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('kader_pending_queue', JSON.stringify(pendingQueue));
-  }, [pendingQueue]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -148,7 +142,8 @@ export default function KaderDashboard() {
    */
   const getParentFormData = () => {
     try {
-      const raw = localStorage.getItem('parent_form_data');
+      // predict-ta path is disabled (API_Dipakai = 'predict'), always return null
+      const raw = null;
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== 'object') return null;
@@ -262,7 +257,6 @@ export default function KaderDashboard() {
 
       if (!parentData) {
         // No matching parent form found — save kader data for pending, warn user
-        localStorage.setItem('kader_form_data', JSON.stringify(formData));
         // Add to pending queue for retry later
         setPendingQueue(prev => {
           const key = `${(formData.namaBalita || '').toLowerCase().trim()}_${formData.tanggalLahir || ''}`;
@@ -421,8 +415,6 @@ export default function KaderDashboard() {
       // Remove from pending
       const key = `${(formData.namaBalita || '').toLowerCase().trim()}_${formData.tanggalLahir || ''}`;
       setPendingQueue(prev => prev.filter(q => q.key !== key));
-      localStorage.removeItem('parent_form_data');
-
       setActiveTab('result');
       toast.success('Prediksi Berhasil!', `Status gizi ${formData.namaBalita || 'balita'} telah diprediksi.`);
       setTimeout(() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
@@ -438,17 +430,8 @@ export default function KaderDashboard() {
   /** Retry prediction for a pending item */
   const retryPrediction = (item) => {
     // Restore kader data for this child then re-check parent match
-    try {
-      const kaderData = localStorage.getItem('kader_form_data');
-      if (kaderData) {
-        const parsed = JSON.parse(kaderData);
-        const pKey = `${(parsed.namaBalita || '').toLowerCase().trim()}_${parsed.tanggalLahir || ''}`;
-        if (pKey === item.key) {
-          setFormData(parsed);
-          toast.info('Data Dimuat', 'Form kader berhasil dimuat. Klik "Prediksi Status Gizi" untuk memproses.');
-        }
-      }
-    } catch {}
+    // predict-ta path is disabled; nothing to restore
+    void item;
   };
 
   const handleReset = () => {
@@ -458,7 +441,6 @@ export default function KaderDashboard() {
     setPredictError('');
     setLinkCode('');
     setCodeCopied(false);
-    localStorage.removeItem('active_link_code');
   };
 
   const handleCopyCode = (code) => {
@@ -478,7 +460,7 @@ export default function KaderDashboard() {
     return () => document.removeEventListener('mousedown', h);
   }, [profileDropdownOpen]);
 
-  const handleLogout = () => { clearAuth(); router.push('/login'); };
+  const handleLogout = async () => { await clearAuth(); router.push('/login'); };
   const handleSaveData = async () => {
     if (!predictionResult || isSaving) return;
     setIsSaving(true);
@@ -493,11 +475,14 @@ export default function KaderDashboard() {
           nama_ibu: formData.namaIbu,
           berat_lahir: toNumber(formData.beratLahir),
           tinggi_lahir: toNumber(formData.tinggiLahir),
+          kelurahan: formData.namaKelurahan || null,
+          nama_posyandu: formData.namaPosyandu || null,
           tanggal_pengukuran: formData.tanggalPengukuran,
           berat_badan: toNumber(formData.beratBadan),
           tinggi_badan: toNumber(formData.tinggiBadan),
           lingkar_lengan: toNumber(formData.lila),
           lingkar_kepala: toNumber(formData.lingkarKepala),
+          kondisi_bb_bulan_lalu: formData.kondisiBeratBadan || null,
           catatan: formData.rekomendasiGizi || null,
           status_gizi_bbu: predictionResult.bbu,
           status_gizi_tbu: predictionResult.tbu,
@@ -658,7 +643,24 @@ export default function KaderDashboard() {
                     <div>
                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center text-[10px] font-bold">1</span> Data Identitas</h3>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        {[{ n: 'namaKelurahan', l: 'Nama Kelurahan', p: 'Contoh: Sukamaju' }, { n: 'namaPosyandu', l: 'Nama Posyandu', p: 'Contoh: Mawar' }, { n: 'namaBalita', l: 'Nama Lengkap Balita *', p: 'Wajib nama lengkap (untuk pencocokan)' }, { n: 'namaIbu', l: 'Nama Lengkap Ibu *', p: 'Wajib nama lengkap (untuk pencocokan)' }].map(f => (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600 mb-1.5">Nama Kelurahan</label>
+                          <CustomDropdown
+                            name="namaKelurahan"
+                            value={formData.namaKelurahan}
+                            onChange={handleInputChange}
+                            placeholder="Pilih kelurahan"
+                            options={[
+                              { value: 'Cibadak', label: 'Cibadak' },
+                              { value: 'Karanganyar', label: 'Karanganyar' },
+                              { value: 'Nyengseret', label: 'Nyengseret' },
+                              { value: 'Panjunan', label: 'Panjunan' },
+                              { value: 'Pelindung Hewan', label: 'Pelindung Hewan' },
+                              { value: 'Karasak', label: 'Karasak' },
+                            ]}
+                          />
+                        </div>
+                        {[{ n: 'namaPosyandu', l: 'Nama Posyandu', p: 'Contoh: Mawar' }, { n: 'namaBalita', l: 'Nama Lengkap Balita *', p: 'Wajib nama lengkap (untuk pencocokan)' }, { n: 'namaIbu', l: 'Nama Lengkap Ibu *', p: 'Wajib nama lengkap (untuk pencocokan)' }].map(f => (
                           <div key={f.n}><label className="block text-sm font-medium text-gray-600 mb-1.5">{f.l}</label><input type="text" name={f.n} value={formData[f.n]} onChange={handleInputChange} className={inputClass} placeholder={f.p} /></div>
                         ))}
                         <div><label className="block text-sm font-medium text-gray-600 mb-1.5">Tanggal Pengukuran *</label><CustomDatePicker name="tanggalPengukuran" value={formData.tanggalPengukuran} onChange={handleInputChange} placeholder="Pilih tanggal" /></div>
@@ -674,10 +676,10 @@ export default function KaderDashboard() {
                     <div>
                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold">2</span> Antropometri</h3>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        {[{ n: 'beratBadan', l: 'Berat badan (kg) *', p: '12.5' }, { n: 'tinggiBadan', l: 'Tinggi badan (cm) *', p: '85.5' }, { n: 'lingkarKepala', l: 'Lingkar kepala (cm)', p: '46.5' }, { n: 'lila', l: 'LiLA (cm)', p: '14.0' }].map(f => (
+                        {[{ n: 'beratBadan', l: 'Berat badan (kg) *', p: '12.5' }, { n: 'tinggiBadan', l: 'Tinggi badan (cm) *', p: '85.5' }, { n: 'lingkarKepala', l: 'Lingkar kepala (cm)', p: '46.5' }, { n: 'lila', l: 'Lingkar Lengan Atas (cm)', p: '14.0' }].map(f => (
                           <div key={f.n}><label className="block text-sm font-medium text-gray-600 mb-1.5">{f.l}</label><input type="number" step="0.1" name={f.n} value={formData[f.n]} onChange={handleInputChange} className={inputClass} placeholder={f.p} /></div>
                         ))}
-                        <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-600 mb-1.5">Kondisi BB dari bulan lalu</label><CustomDropdown name="kondisiBeratBadan" value={formData.kondisiBeratBadan} onChange={handleInputChange} placeholder="Pilih kondisi" options={[{ value: 'naik', label: 'Naik' }, { value: 'turun', label: 'Turun' }, { value: 'tetap', label: 'Tetap' }]} /></div>
+                        <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-600 mb-1.5">Kondisi berat badan anak dari bulan lalu</label><CustomDropdown name="kondisiBeratBadan" value={formData.kondisiBeratBadan} onChange={handleInputChange} placeholder="Pilih kondisi" options={[{ value: 'naik', label: 'Naik' }, { value: 'turun', label: 'Turun' }, { value: 'tetap', label: 'Tetap' }]} /></div>
                       </div>
                     </div>
 

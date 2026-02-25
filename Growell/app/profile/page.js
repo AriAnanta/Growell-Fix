@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Edit2, Mail, Phone, MapPin, Shield } from 'lucide-react';
-import { getUserData, apiFetch, isAuthenticated, saveAuth, getToken } from '@/utils/auth';
+import { getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -38,9 +38,9 @@ export default function ProfilePage() {
     try {
       const res = await apiFetch('/api/auth/profile', { method: 'PUT', body: JSON.stringify(formData) });
       if (res.ok) {
-        const ud = getUserData();
-        saveAuth({ ...ud, nama: formData.nama, email: formData.email, no_telepon: formData.no_telepon, alamat: formData.alamat }, getToken());
         setIsEditing(false);
+        // growell_user cookie is refreshed by the API route after save
+        await fetchProfile();
       }
     } catch (e) { console.error(e); }
     finally { setIsSaving(false); }

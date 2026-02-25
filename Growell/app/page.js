@@ -54,8 +54,8 @@ export default function GrowellLanding() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await clearAuth();
     setIsLoggedIn(false);
     setUserData(null);
     setProfileDropdownOpen(false);

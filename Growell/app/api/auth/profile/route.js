@@ -68,7 +68,19 @@ export async function PUT(request) {
       await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
     }
 
-    return NextResponse.json({ message: 'Profil berhasil diperbarui' });
+    // Refresh growell_user cookie so navbar reflects the updated name/info
+    const [updatedRows] = await pool.query(
+      'SELECT id, uuid, nama, email, role, no_telepon, alamat, posyandu_id FROM users WHERE id = ?',
+      [user.id]
+    );
+    const updatedUser = updatedRows[0];
+
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieOpts = `; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax${isProd ? '; Secure' : ''}`;
+
+    const res = NextResponse.json({ message: 'Profil berhasil diperbarui' });
+    res.headers.set('Set-Cookie', `growell_user=${encodeURIComponent(JSON.stringify(updatedUser))}${cookieOpts}`);
+    return res;
   } catch (err) {
     console.error('Update profile error:', err);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

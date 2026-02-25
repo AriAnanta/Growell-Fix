@@ -54,7 +54,7 @@ export async function POST(request) {
     const [reportData] = await pool.query(
       `SELECT 
         b.nama AS nama_balita, b.tanggal_lahir, b.jenis_kelamin, b.nama_ibu,
-        p.nama AS posyandu_nama,
+        p.nama AS posyandu_nama, COALESCE(p.kecamatan, 'Astananyar') AS kecamatan,
         pk.tanggal_pengukuran, pk.berat_badan, pk.tinggi_badan, pk.lingkar_lengan,
         pk.status_gizi_bbu, pk.status_gizi_tbu, pk.status_gizi_bbtb, pk.rekomendasi_utama
       FROM pengukuran pk
@@ -217,6 +217,7 @@ async function generateExcel(filePath, data, summary, meta) {
     { header: 'Tgl Lahir', key: 'tgl_lahir', width: 14 },
     { header: 'JK', key: 'jk', width: 12 },
     { header: 'Nama Ibu', key: 'ibu', width: 18 },
+    { header: 'Kecamatan', key: 'kecamatan', width: 15 },
     { header: 'Posyandu', key: 'posyandu', width: 18 },
     { header: 'Tgl Ukur', key: 'tgl_ukur', width: 14 },
     { header: 'BB (kg)', key: 'bb', width: 10 },
@@ -236,6 +237,7 @@ async function generateExcel(filePath, data, summary, meta) {
       nama: row.nama_balita,
       tgl_lahir: row.tanggal_lahir ? new Date(row.tanggal_lahir).toLocaleDateString('id-ID') : '-',
       jk: row.jenis_kelamin, ibu: row.nama_ibu || '-',
+      kecamatan: row.kecamatan || 'Astananyar',
       posyandu: row.posyandu_nama || '-',
       tgl_ukur: row.tanggal_pengukuran ? new Date(row.tanggal_pengukuran).toLocaleDateString('id-ID') : '-',
       bb: row.berat_badan, tb: row.tinggi_badan,
