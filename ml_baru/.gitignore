@@ -1,0 +1,32 @@
+# Data files
+data_gizi_balita_terintegrasi_bersih_2.xlsx
+Status Gizi Balita 2023.xlsx
+*.xlsx
+*.csv
+Prediksi_Status_Gizi_Balita_Optimal.ipynb
+# Jupyter Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Python environment & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+build/
+dist/
+
+# Images and plots
+*.png
+*.jpg
+*.jpeg
+confusion_matrices_enhanced.png
+
+# Catboost info
+catboost_info/
+
+# Logs
+*.log

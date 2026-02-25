@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════
+   GROWELL — DESIGN SYSTEM v2.0
+   Inspired by: Apple, Figma, Antigravity
+   Brand Palette: Teal ↔ Emerald ↔ Blue
+   ═══════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Brand Colors — Teal / Blue-Green */
+  --gw-primary: #0d9488;       /* teal-600 */
+  --gw-primary-light: #14b8a6; /* teal-500 */
+  --gw-primary-dark: #0f766e;  /* teal-700 */
+  --gw-accent: #059669;        /* emerald-600 */
+  --gw-surface: #f8fffe;
+  --gw-text: #0f172a;
+  --gw-muted: #64748b;
+  --gw-border: rgba(15, 148, 136, 0.08);
+
+  /* Gradients */
+  --gw-grad: linear-gradient(135deg, #0d9488 0%, #0ea5e9 50%, #059669 100%);
+  --gw-grad-subtle: linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 50%, #f0f9ff 100%);
+  --gw-grad-hero: linear-gradient(160deg, #0d9488 0%, #0369a1 60%, #059669 100%);
+  --gw-grad-dark: linear-gradient(135deg, #042f2e 0%, #0c4a6e 50%, #064e3b 100%);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--gw-text);
+  background: var(--gw-surface);
+  overflow-x: hidden;
+}
+
+/* ─── Global Form Styling ──── */
+select { background-image: none; }
+select::-ms-expand { display: none; }
+input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0; position: absolute; right: 0; width: 100%; height: 100%; }
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button { display: none; }
+input[type="date"] { position: relative; }
+input[type="date"]:focus::-webkit-calendar-picker-indicator { opacity: 0; }
+
+/* ─── Brand Animations ──── */
+@keyframes gw-fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gw-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes gw-slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gw-scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes gw-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes gw-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes gw-pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  80%, 100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes gw-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes gw-blur-in {
+  from { filter: blur(12px); opacity: 0; }
+  to   { filter: blur(0px); opacity: 1; }
+}
+
+/* Utility classes for animations */
+.gw-fade-up  { animation: gw-fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.gw-fade-in  { animation: gw-fadeIn 0.5s ease-out both; }
+.gw-slide-down { animation: gw-slideDown 0.4s ease-out both; }
+.gw-scale-in { animation: gw-scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.gw-blur-in  { animation: gw-blur-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.gw-float    { animation: gw-float 4s ease-in-out infinite; }
+
+/* Stagger delays */
+.gw-delay-1 { animation-delay: 100ms; }
+.gw-delay-2 { animation-delay: 200ms; }
+.gw-delay-3 { animation-delay: 300ms; }
+.gw-delay-4 { animation-delay: 400ms; }
+.gw-delay-5 { animation-delay: 500ms; }
+
+/* Legacy compat */
+.animate-in { animation: gw-fadeIn 0.2s ease-out; }
+.fade-in { animation: gw-fadeIn 0.2s ease-out; }
+.slide-in-from-top-2 { animation: gw-slideDown 0.2s ease-out; }
+
+/* ─── Glass Morphism ──── */
+.gw-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.gw-glass-dark {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Premium Buttons ──── */
+.gw-btn-primary {
+  background: var(--gw-grad);
+  background-size: 200% 200%;
+  color: white;
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 14px 28px;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.gw-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.gw-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -8px rgba(13, 148, 136, 0.45);
+}
+.gw-btn-primary:hover::before { opacity: 1; }
+.gw-btn-primary:active { transform: translateY(0); }
+
+/* ─── Cards ──── */
+.gw-card {
+  background: white;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.03);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.gw-card:hover {
+  box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+  transform: translateY(-4px);
+}
+
+/* Gradient text utility */
+.gw-text-gradient {
+  background: var(--gw-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Scrollbar ──── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(13, 148, 136, 0.2); border-radius: 20px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(13, 148, 136, 0.4); }
+
+/* ─── Focus Ring ──── */
+:focus-visible {
+  outline: 2px solid var(--gw-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ─── Selection ──── */
+::selection {
+  background: rgba(13, 148, 136, 0.2);
+  color: var(--gw-text);
+}
+
+/* ─── Page Transitions ──── */
+.page-enter { animation: gw-fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
