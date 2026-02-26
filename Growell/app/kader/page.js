@@ -42,7 +42,8 @@ export default function KaderDashboard() {
     namaKelurahan: '', namaPosyandu: '', namaBalita: '', namaIbu: '',
     tanggalPengukuran: '', tanggalLahir: '', jenisKelamin: '', usiaBulan: '',
     beratBadan: '', tinggiBadan: '', lingkarKepala: '', lila: '',
-    kondisiBeratBadan: '', usiaKehamilan: '', beratLahir: '', tinggiLahir: '', rekomendasiGizi: ''
+    kondisiBeratBadan: '', usiaKehamilan: '', beratLahir: '', tinggiLahir: '',
+    rekomendasiGizi: '', statusTBU: '', statusBBTB: '', statusBBU: ''
   };
   const [formData, setFormData] = useState(emptyForm);
 
@@ -61,6 +62,10 @@ export default function KaderDashboard() {
 
   // Pending queue
   const [pendingQueue, setPendingQueue] = useState([]);
+  const [formErrors, setFormErrors] = useState({});
+
+  // Track whether current prediction has been saved — prevents accidental data loss
+  const [dataSaved, setDataSaved] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return; }
@@ -128,6 +133,8 @@ export default function KaderDashboard() {
       }
       return updated;
     });
+    // Clear error for this field when user fills it in
+    if (value) setFormErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
   };
 
   const toNumber = (v) => {
@@ -173,21 +180,36 @@ export default function KaderDashboard() {
   // ─── Submit ────────────────────────────────────
   const handleSubmit = async () => {
     setPredictError('');
-    setIsPredicting(true);
 
-    const required = [
-      { key: 'tanggalLahir', label: 'Tanggal Lahir' },
-      { key: 'tanggalPengukuran', label: 'Tanggal Pengukuran' },
-      { key: 'jenisKelamin', label: 'Jenis Kelamin' },
-      { key: 'beratBadan', label: 'Berat Badan' },
-      { key: 'tinggiBadan', label: 'Tinggi Badan' },
+    // Validate all required fields and build per-field errors
+    const requiredFields = [
+      { key: 'namaBalita',         label: 'Nama lengkap balita' },
+      { key: 'namaIbu',            label: 'Nama orang tua balita' },
+      { key: 'tanggalLahir',       label: 'Tanggal Lahir Balita' },
+      { key: 'tanggalPengukuran',  label: 'Tanggal Pengukuran' },
+      { key: 'jenisKelamin',       label: 'Jenis Kelamin Balita' },
+      { key: 'beratBadan',         label: 'Berat badan balita saat ini' },
+      { key: 'tinggiBadan',        label: 'Tinggi/Panjang badan balita saat ini' },
+      { key: 'kondisiBeratBadan',  label: 'Kondisi berat badan dari 1 bulan lalu' },
+      { key: 'usiaKehamilan',      label: 'Usia kehamilan saat balita lahir' },
+      { key: 'beratLahir',         label: 'Berat badan balita saat lahir' },
+      { key: 'tinggiLahir',        label: 'Tinggi/Panjang badan balita saat lahir' },
     ];
-    const missing = required.filter(f => !formData[f.key]);
-    if (missing.length > 0) {
-      setPredictError(`Lengkapi: ${missing.map(m => m.label).join(', ')}`);
-      setIsPredicting(false);
+
+    const errors = {};
+    requiredFields.forEach(f => { if (!formData[f.key]) errors[f.key] = true; });
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      // Scroll to first error field
+      const firstKey = Object.keys(errors)[0];
+      const el = document.getElementById(`field-${firstKey}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setPredictError(`${Object.keys(errors).length} field wajib belum diisi. Periksa field yang ditandai merah di atas.`);
       return;
     }
+
+    setIsPredicting(true);
 
     try {
       // ━━━ Mode 'predict' — Kader only, direct to ML ━━━
@@ -390,6 +412,21 @@ export default function KaderDashboard() {
       try {
         const statusBBTB = p.status_gizi_bbtb?.label || 'Gizi Baik';
         const statusTBU = p.status_gizi_tbu?.label || 'Normal';
+        // Map form long-text dropdown values to exact Python enum strings
+        const _mapPolaAsuh = (v) => {
+          if (!v) return 'Responsive feeding';
+          const l = v.toLowerCase();
+          if (l.includes('pemaksaan')) return 'Pemaksaan makan';
+          if (l.includes('dibiarkan')) return 'Dibiarkan makan sendiri';
+          return 'Responsive feeding';
+        };
+        const _mapSanitasi = (v) => {
+          if (!v) return 'Toilet dengan septic tank';
+          const l = v.toLowerCase();
+          if (l.includes('sungai') || l.includes('kebun') || l.includes('terbuka')) return 'Buang air di sungai/kebun';
+          if ((l.includes('tanpa') || l.includes('langsung')) && l.includes('selokan')) return 'Toilet tanpa septic tank (ke selokan)';
+          return 'Toilet dengan septic tank';
+        };
         const rekRes = await fetch(`${mlUrl}/predict-rekomendasi`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -400,9 +437,9 @@ export default function KaderDashboard() {
             status_gizi_tb_u: statusTBU,
             asi_eksklusif: parentData.asiEksklusif === 'Ya',
             konsumsi_protein_hewani: parentData.mpasiHewani || 'Ya, setiap hari',
-            pola_asuh_makan: parentData.polaAsuh || 'Responsive feeding',
+            pola_asuh_makan: _mapPolaAsuh(parentData.polaAsuh),
             riwayat_sakit_2minggu: parentData.sakit2Minggu === 'Ya',
-            jenis_sanitasi: parentData.sanitasi || 'Toilet dengan septic tank',
+            jenis_sanitasi: _mapSanitasi(parentData.sanitasi),
             rutin_vitamin_a: !!parentData.vitaminA,
             rutin_posyandu: parentData.rutinPosyandu === 'Rutin setiap bulan',
           }),
@@ -439,8 +476,10 @@ export default function KaderDashboard() {
     setPredictionResult(null);
     setRekomendasiResult(null);
     setPredictError('');
+    setFormErrors({});
     setLinkCode('');
     setCodeCopied(false);
+    setDataSaved(false);
   };
 
   const handleCopyCode = (code) => {
@@ -497,7 +536,13 @@ export default function KaderDashboard() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Gagal menyimpan data');
       }
+      const savedData = await res.json();
+      setDataSaved(true);
       setShowSuccessModal(true);
+      // Show context: new child vs returning child
+      if (!savedData.is_new_balita) {
+        toast.info('Data Pengukuran Ditambahkan', `Pengukuran baru untuk "${formData.namaBalita}" berhasil disimpan. Anak ini sudah terdaftar sebelumnya.`);
+      }
       fetchRecentData();
       fetchDashboardStats();
     } catch (err) {
@@ -639,69 +684,210 @@ export default function KaderDashboard() {
               <div className="p-5 sm:p-8">
                 {activeTab === 'input' && (
                   <div className="space-y-7">
-                    {/* ─── Identity ─── */}
+
+                    {/* ─── Section 1: Identitas Balita ─── */}
                     <div>
-                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center text-[10px] font-bold">1</span> Data Identitas</h3>
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center text-[10px] font-bold">1</span>
+                        Data Identitas
+                      </h3>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1.5">Nama Kelurahan</label>
-                          <CustomDropdown
-                            name="namaKelurahan"
-                            value={formData.namaKelurahan}
-                            onChange={handleInputChange}
-                            placeholder="Pilih kelurahan"
+
+                        {/* 1. Nama Kelurahan */}
+                        <div id="field-namaKelurahan">
+                          <label className="block text-sm font-medium text-gray-600 mb-1.5">1. Nama Kelurahan yang balita tempati? *</label>
+                          <CustomDropdown name="namaKelurahan" value={formData.namaKelurahan} onChange={handleInputChange} placeholder="Pilih kelurahan"
                             options={[
+                              { value: 'Pelindung Hewan', label: 'Pelindung Hewan' },
+                              { value: 'Nyengseret', label: 'Nyengseret' },
                               { value: 'Cibadak', label: 'Cibadak' },
                               { value: 'Karanganyar', label: 'Karanganyar' },
-                              { value: 'Nyengseret', label: 'Nyengseret' },
                               { value: 'Panjunan', label: 'Panjunan' },
-                              { value: 'Pelindung Hewan', label: 'Pelindung Hewan' },
                               { value: 'Karasak', label: 'Karasak' },
-                            ]}
-                          />
+                            ]} />
                         </div>
-                        {[{ n: 'namaPosyandu', l: 'Nama Posyandu', p: 'Contoh: Mawar' }, { n: 'namaBalita', l: 'Nama Lengkap Balita *', p: 'Wajib nama lengkap (untuk pencocokan)' }, { n: 'namaIbu', l: 'Nama Lengkap Ibu *', p: 'Wajib nama lengkap (untuk pencocokan)' }].map(f => (
-                          <div key={f.n}><label className="block text-sm font-medium text-gray-600 mb-1.5">{f.l}</label><input type="text" name={f.n} value={formData[f.n]} onChange={handleInputChange} className={inputClass} placeholder={f.p} /></div>
-                        ))}
-                        <div><label className="block text-sm font-medium text-gray-600 mb-1.5">Tanggal Pengukuran *</label><CustomDatePicker name="tanggalPengukuran" value={formData.tanggalPengukuran} onChange={handleInputChange} placeholder="Pilih tanggal" /></div>
-                        <div><label className="block text-sm font-medium text-gray-600 mb-1.5">Tanggal Lahir *</label><CustomDatePicker name="tanggalLahir" value={formData.tanggalLahir} onChange={handleInputChange} placeholder="Pilih tanggal" defaultYear={new Date().getFullYear() - 2} /></div>
-                        <div><label className="block text-sm font-medium text-gray-600 mb-1.5">Jenis Kelamin *</label><CustomDropdown name="jenisKelamin" value={formData.jenisKelamin} onChange={handleInputChange} placeholder="Pilih" options={[{ value: 'Laki-Laki', label: 'Laki-Laki' }, { value: 'Perempuan', label: 'Perempuan' }]} /></div>
-                        <div><label className="block text-sm font-medium text-gray-600 mb-1.5">Umur (bulan)</label><input type="number" name="usiaBulan" value={formData.usiaBulan} className={`${inputClass} bg-gray-100`} placeholder="Terhitung Otomatis" readOnly /></div>
+
+                        {/* 2. Nama Posyandu */}
+                        <div id="field-namaPosyandu">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.namaPosyandu ? 'text-red-600' : 'text-gray-600'}`}>2. Nama Posyandu yang dikunjungi? *</label>
+                          <input type="text" name="namaPosyandu" value={formData.namaPosyandu} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.namaPosyandu ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: Posyandu Mawar" />
+                          {formErrors.namaPosyandu && <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p>}
+                        </div>
+
+                        {/* 3. Nama Balita */}
+                        <div id="field-namaBalita">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.namaBalita ? 'text-red-600' : 'text-gray-600'}`}>3. Nama Balita *</label>
+                          <input type="text" name="namaBalita" value={formData.namaBalita} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.namaBalita ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Tulis nama lengkap balita" />
+                          {formErrors.namaBalita ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Nama lengkap, digunakan untuk pencocokan data</p>}
+                        </div>
+
+                        {/* 4. Nama Orang Tua */}
+                        <div id="field-namaIbu">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.namaIbu ? 'text-red-600' : 'text-gray-600'}`}>4. Nama orang tua balita *</label>
+                          <input type="text" name="namaIbu" value={formData.namaIbu} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.namaIbu ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Tulis nama lengkap orang tua" />
+                          {formErrors.namaIbu ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Nama lengkap, digunakan untuk pencocokan data</p>}
+                        </div>
+
+                        {/* 5. Umur Balita — auto-calc, read-only */}
+                        <div id="field-usiaBulan">
+                          <label className="block text-sm font-medium text-gray-600 mb-1.5">5. Umur Balita saat ini (bulan)</label>
+                          <input type="number" name="usiaBulan" value={formData.usiaBulan}
+                            className={`${inputClass} bg-gray-100 cursor-not-allowed`}
+                            placeholder="Terisi otomatis dari tanggal lahir" readOnly />
+                          <p className="text-xs text-gray-400 mt-1 italic">Terisi otomatis setelah mengisi tanggal lahir & tanggal pengukuran. Contoh: 16</p>
+                        </div>
+
+                        {/* 6. Tanggal Lahir */}
+                        <div id="field-tanggalLahir">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.tanggalLahir ? 'text-red-600' : 'text-gray-600'}`}>6. Tanggal Lahir Balita *</label>
+                          <CustomDatePicker name="tanggalLahir" value={formData.tanggalLahir} onChange={handleInputChange} placeholder="Pilih tanggal lahir" defaultYear={new Date().getFullYear() - 2} error={!!formErrors.tanggalLahir} />
+                          {formErrors.tanggalLahir && <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p>}
+                        </div>
+
+                        {/* Tanggal Pengukuran */}
+                        <div id="field-tanggalPengukuran">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.tanggalPengukuran ? 'text-red-600' : 'text-gray-600'}`}>Tanggal Pengukuran *</label>
+                          <CustomDatePicker name="tanggalPengukuran" value={formData.tanggalPengukuran} onChange={handleInputChange} placeholder="Pilih tanggal pengukuran" error={!!formErrors.tanggalPengukuran} />
+                          {formErrors.tanggalPengukuran && <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p>}
+                        </div>
+
+                        {/* 7. Jenis Kelamin */}
+                        <div id="field-jenisKelamin">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.jenisKelamin ? 'text-red-600' : 'text-gray-600'}`}>7. Jenis Kelamin Balita *</label>
+                          <CustomDropdown name="jenisKelamin" value={formData.jenisKelamin} onChange={handleInputChange} placeholder="Pilih jenis kelamin"
+                            options={[{ value: 'Laki-laki', label: 'Laki-laki' }, { value: 'Perempuan', label: 'Perempuan' }]}
+                            error={!!formErrors.jenisKelamin} />
+                          {formErrors.jenisKelamin && <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p>}
+                        </div>
+
                       </div>
                     </div>
 
                     <div className="border-t border-gray-100" />
 
-                    {/* ─── Anthropometry ─── */}
+                    {/* ─── Section 2: Antropometri ─── */}
                     <div>
-                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold">2</span> Antropometri</h3>
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold">2</span>
+                        Antropometri Saat Ini
+                      </h3>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        {[{ n: 'beratBadan', l: 'Berat badan (kg) *', p: '12.5' }, { n: 'tinggiBadan', l: 'Tinggi badan (cm) *', p: '85.5' }, { n: 'lingkarKepala', l: 'Lingkar kepala (cm)', p: '46.5' }, { n: 'lila', l: 'Lingkar Lengan Atas (cm)', p: '14.0' }].map(f => (
-                          <div key={f.n}><label className="block text-sm font-medium text-gray-600 mb-1.5">{f.l}</label><input type="number" step="0.1" name={f.n} value={formData[f.n]} onChange={handleInputChange} className={inputClass} placeholder={f.p} /></div>
-                        ))}
-                        <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-600 mb-1.5">Kondisi berat badan anak dari bulan lalu</label><CustomDropdown name="kondisiBeratBadan" value={formData.kondisiBeratBadan} onChange={handleInputChange} placeholder="Pilih kondisi" options={[{ value: 'naik', label: 'Naik' }, { value: 'turun', label: 'Turun' }, { value: 'tetap', label: 'Tetap' }]} /></div>
+
+                        {/* 8. Berat Badan */}
+                        <div id="field-beratBadan">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.beratBadan ? 'text-red-600' : 'text-gray-600'}`}>8. Berat badan balita saat ini (kg) *</label>
+                          <input type="number" step="0.1" name="beratBadan" value={formData.beratBadan} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.beratBadan ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: 20 atau 20.5" />
+                          {formErrors.beratBadan ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 20 atau 20.5</p>}
+                        </div>
+
+                        {/* 9. Tinggi Badan */}
+                        <div id="field-tinggiBadan">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.tinggiBadan ? 'text-red-600' : 'text-gray-600'}`}>9. Tinggi/Panjang badan balita saat ini (cm) *</label>
+                          <input type="number" step="0.1" name="tinggiBadan" value={formData.tinggiBadan} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.tinggiBadan ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: 60 atau 60.5" />
+                          {formErrors.tinggiBadan ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 60 atau 60.5</p>}
+                        </div>
+
+                        {/* 10. Lingkar Kepala */}
+                        <div id="field-lingkarKepala">
+                          <label className="block text-sm font-medium text-gray-600 mb-1.5">10. Lingkar kepala balita saat ini (cm)</label>
+                          <input type="number" step="0.1" name="lingkarKepala" value={formData.lingkarKepala} onChange={handleInputChange}
+                            className={inputClass} placeholder="Contoh: 10 atau 10.5" />
+                          <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 10 atau 10.5</p>
+                        </div>
+
+                        {/* 11. LILA */}
+                        <div id="field-lila">
+                          <label className="block text-sm font-medium text-gray-600 mb-1.5">11. Lingkar Lengan Atas (LILA) balita saat ini (cm)</label>
+                          <input type="number" step="0.1" name="lila" value={formData.lila} onChange={handleInputChange}
+                            className={inputClass} placeholder="Contoh: 10 atau 10.5" />
+                          <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 10 atau 10.5</p>
+                        </div>
+
+                        {/* 12. Kondisi BB dari bulan lalu */}
+                        <div id="field-kondisiBeratBadan" className="sm:col-span-2">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.kondisiBeratBadan ? 'text-red-600' : 'text-gray-600'}`}>12. Kondisi berat badan balita saat ini dari 1 bulan lalu? *</label>
+                          <CustomDropdown name="kondisiBeratBadan" value={formData.kondisiBeratBadan} onChange={handleInputChange} placeholder="Pilih kondisi berat badan"
+                            options={[{ value: 'Tetap', label: 'Tetap' }, { value: 'Naik', label: 'Naik' }, { value: 'Turun', label: 'Turun' }]}
+                            error={!!formErrors.kondisiBeratBadan} />
+                          {formErrors.kondisiBeratBadan && <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p>}
+                        </div>
+
                       </div>
                     </div>
 
                     <div className="border-t border-gray-100" />
 
-                    {/* ─── Birth ─── */}
+                    {/* ─── Section 3: Riwayat Kelahiran ─── */}
                     <div>
-                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2"><span className="w-5 h-5 rounded-md bg-violet-50 text-violet-600 flex items-center justify-center text-[10px] font-bold">3</span> Data Kelahiran</h3>
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-violet-50 text-violet-600 flex items-center justify-center text-[10px] font-bold">3</span>
+                        Riwayat Kelahiran Balita
+                      </h3>
                       <div className="grid sm:grid-cols-2 gap-4">
-                        {[{ n: 'usiaKehamilan', l: 'Usia kehamilan (bulan)', p: '9' }, { n: 'beratLahir', l: 'Berat lahir (kg)', p: '3.2' }, { n: 'tinggiLahir', l: 'Panjang lahir (cm)', p: '49.5' }].map(f => (
-                          <div key={f.n}><label className="block text-sm font-medium text-gray-600 mb-1.5">{f.l}</label><input type="number" step="0.1" name={f.n} value={formData[f.n]} onChange={handleInputChange} className={inputClass} placeholder={f.p} /></div>
-                        ))}
-                        <div className="sm:col-span-2"><label className="block text-sm font-medium text-gray-600 mb-1.5">Catatan <span className="text-gray-400">(opsional)</span></label><textarea name="rekomendasiGizi" value={formData.rekomendasiGizi} onChange={handleInputChange} className={`${inputClass} resize-none`} rows="3" placeholder="Catatan tambahan" /></div>
+
+                        {/* 13. Usia Kehamilan */}
+                        <div id="field-usiaKehamilan">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.usiaKehamilan ? 'text-red-600' : 'text-gray-600'}`}>13. Usia kehamilan saat balita lahir (bulan) *</label>
+                          <input type="number" step="0.1" name="usiaKehamilan" value={formData.usiaKehamilan} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.usiaKehamilan ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: 9" />
+                          {formErrors.usiaKehamilan ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Tuliskan angka saja. Contoh: 9</p>}
+                        </div>
+
+                        {/* 14. Berat Lahir */}
+                        <div id="field-beratLahir">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.beratLahir ? 'text-red-600' : 'text-gray-600'}`}>14. Berat badan balita saat lahir (kg) *</label>
+                          <input type="number" step="0.1" name="beratLahir" value={formData.beratLahir} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.beratLahir ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: 3.2" />
+                          {formErrors.beratLahir ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 20 atau 20.5</p>}
+                        </div>
+
+                        {/* 15. Panjang Lahir */}
+                        <div id="field-tinggiLahir">
+                          <label className={`block text-sm font-medium mb-1.5 ${formErrors.tinggiLahir ? 'text-red-600' : 'text-gray-600'}`}>15. Tinggi/Panjang badan balita saat lahir (cm) *</label>
+                          <input type="number" step="0.1" name="tinggiLahir" value={formData.tinggiLahir} onChange={handleInputChange}
+                            className={`${inputClass} ${formErrors.tinggiLahir ? '!border-red-400 !bg-red-50' : ''}`}
+                            placeholder="Contoh: 49.5" />
+                          {formErrors.tinggiLahir ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Gunakan tanda titik (.) jika ada desimal. Contoh: 60 atau 60.5</p>}
+                        </div>
+
                       </div>
                     </div>
 
-                    {/* Error */}
-                    {predictError && (
+                    <div className="border-t border-gray-100" />
+
+                    {/* ─── Section 4: Status Gizi & Rekomendasi ─── */}
+                    
+
+                    {/* ─── Validation error summary ─── */}
+                    {Object.keys(formErrors).length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                        <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-red-700 mb-1">{Object.keys(formErrors).length} field wajib belum diisi</p>
+                          <p className="text-xs text-red-500">Periksa field yang ditandai merah di atas, lalu isi sebelum melanjutkan prediksi.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* API Error (only show if no field-level errors) */}
+                    {predictError && Object.keys(formErrors).length === 0 && (
                       <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm font-medium flex items-start gap-2">
                         <AlertCircle size={16} className="mt-0.5 flex-shrink-0" /> {predictError}
                       </div>
                     )}
+
 
                     {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -772,8 +958,16 @@ export default function KaderDashboard() {
                     )}
 
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <button onClick={handleSaveData} disabled={isSaving} className="flex-1 py-3.5 bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all hover:shadow-lg hover:shadow-teal-500/25 flex items-center justify-center gap-2 disabled:opacity-60">{isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><Save size={16} /> Simpan Data</>}</button>
-                      <button onClick={() => { handleReset(); setActiveTab('input'); }} className="flex-1 py-3.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"><Plus size={16} /> Input Anak Berikutnya</button>
+                      <button onClick={handleSaveData} disabled={isSaving || dataSaved} className="flex-1 py-3.5 bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all hover:shadow-lg hover:shadow-teal-500/25 flex items-center justify-center gap-2 disabled:opacity-60">
+                        {isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : dataSaved ? <><CheckCircle2 size={16} /> Tersimpan</> : <><Save size={16} /> Simpan Data</>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!dataSaved && predictionResult && !window.confirm('Data prediksi belum disimpan. Lanjutkan tanpa menyimpan?')) return;
+                          handleReset(); setActiveTab('input');
+                        }}
+                        className="flex-1 py-3.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                      ><Plus size={16} /> Input Anak Berikutnya</button>
                     </div>
                   </div>
                 )}

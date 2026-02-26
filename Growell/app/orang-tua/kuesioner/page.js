@@ -53,6 +53,12 @@ function ParentFormPage() {
   const [rekomendasiData, setRekomendasiData] = useState(null); // { rekomendasi_utama, ... }
   const [isUpdatingRek, setIsUpdatingRek] = useState(false);
 
+  // Track whether form was pre-filled from a previous visit
+  const [lastSurveyDate, setLastSurveyDate] = useState(null); // ISO string or null
+
+  // Section validation errors — set of question keys that are required but empty
+  const [sectionErrors, setSectionErrors] = useState({}); // { [key]: true }
+
   // ─── Form Structure ─────────────────────────────────
   const formStructure = useMemo(() => [
     {
@@ -69,122 +75,122 @@ function ParentFormPage() {
     {
       title: "Riwayat Kelahiran", icon: "2", color: "emerald",
       questions: [
-        { key: 'bbLahirRendah', label: '8. Berat lahir balita kurang dari 2.5 kg?', type: 'yesno' },
-        { key: 'prematur', label: '9. Balita lahir prematur (kurang dari 9 bulan)?', type: 'yesno' },
-        { key: 'imd', label: '10. Bayi langsung disusui dalam 1 jam pertama (IMD)?', type: 'yesno', helper: 'Inisiasi Menyusui Dini' },
-        { key: 'komplikasiLahir', label: '11. Saat lahir terdapat komplikasi atau penyakit serius?', type: 'yesno' },
-        { key: 'detailKomplikasi', label: '12. Jika ya, komplikasi apa yang diderita?', type: 'text' },
+        { key: 'bbLahirRendah', label: '8. Apakah berat lahir balita kurang dari 2,5 kg (berat lahir rendah)? *', type: 'yesno', required: true },
+        { key: 'prematur', label: '9. Apakah balita lahir prematur (kurang dari 9 bulan)? *', type: 'yesno', required: true },
+        { key: 'imd', label: '10. Apakah setelah melahirkan, bayi langsung diletakkan di dada ibu dan disusui dalam waktu sekitar satu jam pertama? *', type: 'yesno', required: true, helper: 'Tindakan ini disebut Inisiasi Menyusui Dini (IMD)', fullWidth: true },
+        { key: 'komplikasiLahir', label: '11. Apakah saat lahir terdapat komplikasi atau penyakit serius? *', type: 'yesno', required: true },
+        { key: 'detailKomplikasi', label: '12. Komplikasi atau penyakit serius apa yang diderita balita saat lahir? *', type: 'text', required: true, placeholder: 'Contoh: Asfiksia, Hiperbilirubinemia, dll.', showIf: { key: 'komplikasiLahir', value: 'Ya' }, fullWidth: true },
       ]
     },
     {
       title: "Kesehatan Orang Tua", icon: "3", color: "violet",
       questions: [
-        { key: 'tinggiIbu', label: '13. Tinggi badan ibu (cm)', type: 'number', placeholder: '160' },
-        { key: 'beratIbu', label: '14. Berat badan ibu (kg)', type: 'number', placeholder: '60' },
-        { key: 'tinggiAyah', label: '15. Tinggi badan ayah (cm)', type: 'number', placeholder: '170' },
-        { key: 'beratAyah', label: '16. Berat badan ayah (kg)', type: 'number', placeholder: '70' },
-        { key: 'statusGiziIbuHamil', label: '17. Status gizi ibu saat hamil', type: 'select', options: ['Normal', 'Kurang Energi Kronis (KEK) (LILA < 23.5 cm)'] },
-        { key: 'anemia', label: '18. Ibu pernah didiagnosis anemia?', type: 'yesno' },
-        { key: 'hamilDiBawah20', label: '19. Ibu hamil saat usia di bawah 20 tahun?', type: 'yesno' },
-        { key: 'jarakKelahiran', label: '20. Jarak kelahiran anak ini dengan kakak/adiknya?', type: 'select', options: ['Kurang dari 2 Tahun', '2-3 Tahun', 'Lebih dari 3 Tahun', 'Anak pertama'] },
-        { key: 'tekananDarahTinggi', label: '21. Ibu tekanan darah tinggi saat hamil?', type: 'yesno' },
-        { key: 'gulaDarahTinggi', label: '22. Ibu gula darah tinggi saat hamil?', type: 'yesno' },
-        { key: 'infeksiHamil', label: '23. Selama hamil mengalami infeksi serius?', type: 'yesno' },
+        { key: 'tinggiIbu', label: '13. Tinggi badan ibu (dalam sentimeter) *', type: 'number', placeholder: 'Contoh: 160 atau 160.5', required: true, helper: 'Gunakan tanda titik (.) jika ada angka desimal. Contoh: 160 atau 160.5' },
+        { key: 'beratIbu', label: '14. Berat badan ibu (dalam kilogram) *', type: 'number', placeholder: 'Contoh: 60 atau 60.5', required: true, helper: 'Gunakan tanda titik (.) jika ada angka desimal. Contoh: 60 atau 60.5' },
+        { key: 'tinggiAyah', label: '15. Tinggi badan ayah (dalam sentimeter) *', type: 'number', placeholder: 'Contoh: 170 atau 170.5', required: true, helper: 'Gunakan tanda titik (.) jika ada angka desimal. Contoh: 170 atau 170.5' },
+        { key: 'beratAyah', label: '16. Berat badan ayah (dalam kilogram) *', type: 'number', placeholder: 'Contoh: 70 atau 70.5', required: true, helper: 'Gunakan tanda titik (.) jika ada angka desimal. Contoh: 70 atau 70.5' },
+        { key: 'statusGiziIbuHamil', label: '17. Status gizi ibu saat hamil (berdasarkan catatan kesehatan) *', type: 'select', required: true, options: ['Normal', 'Kurang Energi Kronis (KEK) (Ukuran lingkar lengan atas kurang dari 23.5 cm atau IMT kurang dari 18.5)'] },
+        { key: 'anemia', label: '18. Apakah ibu pernah didiagnosis anemia oleh tenaga kesehatan? *', type: 'yesno', required: true },
+        { key: 'hamilDiBawah20', label: '19. Apakah ibu hamil saat usia di bawah 20 tahun? *', type: 'yesno', required: true },
+        { key: 'jarakKelahiran', label: '20. Berapa lama jarak waktu antara kelahiran anak ini dengan kakak atau adiknya? *', type: 'select', required: true, options: ['Kurang dari 2 Tahun', '2 - 3 Tahun', 'Lebih dari 3 Tahun', 'Anak pertama (belum memiliki kakak atau adik)'], helper: 'Bila anak ini adalah anak pertama, pilih opsi "Anak pertama"', fullWidth: true },
+        { key: 'tekananDarahTinggi', label: '21. Apakah ibu mengalami tekanan darah tinggi saat hamil? *', type: 'yesno', required: true },
+        { key: 'gulaDarahTinggi', label: '22. Apakah ibu mengalami gula darah tinggi saat hamil? *', type: 'yesno', required: true },
+        { key: 'infeksiHamil', label: '23. Apakah selama hamil Ibu pernah mengalami infeksi atau penyakit yang cukup serius? *', type: 'yesno', required: true, helper: 'Misalnya infeksi saluran kemih, demam tinggi karena infeksi, malaria, atau lainnya', fullWidth: true },
       ]
     },
     {
       title: "Suplemen & Kehamilan", icon: "4", color: "amber",
       questions: [
-        { key: 'rutinSuplemen', label: '24. Ibu rutin mengonsumsi suplemen saat hamil?', type: 'select', options: ['Rutin setiap hari', 'Kadang-kadang', 'Tidak pernah'] },
-        { key: 'hamilLagi', label: '25. Ibu sedang hamil kembali saat ini?', type: 'yesno' },
-        { key: 'frekuensiSuplemen', label: '26. Frekuensi suplemen mingguan?', type: 'number' },
-        { key: 'jenisSuplemen', label: '27. Suplemen yang dikonsumsi?', type: 'multiselect', options: ['Tablet tambah darah (zat besi)', 'Vitamin C', 'Vitamin D', 'Asam folat', 'Kalsium', 'Susu ibu hamil', 'Lainnya'] },
-        { key: 'ttd90', label: '28. TTD minimal 90 tablet?', type: 'yesno' },
+        { key: 'rutinSuplemen', label: '24. Apakah ibu rutin mengonsumsi suplemen saat hamil? *', type: 'select', required: true, options: ['Rutin setiap hari', 'Kadang-kadang', 'Tidak pernah'] },
+        { key: 'frekuensiSuplemen', label: '26. Jika mengonsumsi suplemen, sebutkan frekuensinya (berapa kali dalam seminggu) *', type: 'number', required: true, placeholder: 'Contoh: 3', helper: 'Tulis angka saja. Contoh: 3 (berarti 3 kali seminggu)', showIf: { key: 'rutinSuplemen', value: ['Rutin setiap hari', 'Kadang-kadang'] } },
+        { key: 'jenisSuplemen', label: '27. Suplemen apa yang Ibu konsumsi selama hamil atau setelah melahirkan? *', type: 'multiselect', required: true, options: ['Tablet tambah darah (zat besi)', 'Vitamin C', 'Vitamin D', 'Asam folat (vitamin untuk pertumbuhan janin)', 'Kalsium', 'Susu ibu hamil', 'Lainnya'], showIf: { key: 'rutinSuplemen', value: ['Rutin setiap hari', 'Kadang-kadang'] }, fullWidth: true },
+        { key: 'ttd90', label: '28. Apakah ibu hamil mengonsumsi Tablet Tambah Darah (TTD) minimal 90 tablet selama kehamilan? *', type: 'yesno', required: true, showIf: { key: 'rutinSuplemen', value: ['Rutin setiap hari', 'Kadang-kadang'] }, fullWidth: true },
+        { key: 'hamilLagi', label: '25. Apakah ibu sedang hamil kembali saat ini? *', type: 'yesno', required: true },
       ]
     },
     {
       title: "ASI & MP-ASI", icon: "5", color: "pink",
       questions: [
-        { key: 'asiEksklusif', label: '29. ASI eksklusif 6 bulan?', type: 'yesno' },
-        { key: 'usiaMpasi', label: '30. Usia mulai MP-ASI (bulan)', type: 'number' },
-        { key: 'mpasiHewani', label: '31. MP-ASI mengandung bahan hewani?', type: 'select', options: ['Ya, setiap hari', 'Ya, namun tidak rutin', 'Tidak pernah'] },
-        { key: 'frekuensiMakan', label: '32. Frekuensi makan utama per hari?', type: 'select', options: ['1 kali sehari', '2 kali sehari', '3 kali sehari', '4 kali sehari atau lebih'] },
-        { key: 'susuLain', label: '33. Minum susu selain ASI?', type: 'yesno' },
-        { key: 'frekuensiSusu', label: '34. Jika ya, berapa kali per hari?', type: 'number' },
+        { key: 'asiEksklusif', label: '29. Apakah bayi mendapat ASI eksklusif selama 6 bulan? *', type: 'yesno', required: true },
+        { key: 'usiaMpasi', label: '30. Usia balita mulai diberi MP-ASI (bulan) *', type: 'number', required: true, placeholder: 'Contoh: 6', helper: 'Tulis angka saja dalam satuan bulan. Contoh: 6' },
+        { key: 'mpasiHewani', label: '31. Apakah makanan pendamping ASI (MP-ASI) yang diberikan kepada anak mengandung bahan dari hewan? *', type: 'select', required: true, options: ['Ya, setiap hari', 'Ya, namun tidak rutin', 'Tidak pernah'], helper: 'Seperti telur, ikan, ayam, atau daging', fullWidth: true },
+        { key: 'frekuensiMakan', label: '32. Dalam satu hari, berapa kali anak makan makanan utama? *', type: 'select', required: true, options: ['1 kali sehari', '2 kali sehari', '3 kali sehari', '4 kali sehari atau lebih'], helper: 'Seperti nasi, bubur, atau MP-ASI buatan rumah', fullWidth: true },
+        { key: 'susuLain', label: '33. Apakah anak minum susu selain ASI? *', type: 'yesno', required: true, helper: 'Seperti susu formula, susu cair (UHT), atau susu bubuk biasa' },
+        { key: 'frekuensiSusu', label: '34. Jika ya, berapa kali per hari? *', type: 'number', required: true, placeholder: 'Contoh: 2', helper: 'Tuliskan hanya angka saja. Contoh: 2', showIf: { key: 'susuLain', value: 'Ya' } },
       ]
     },
     {
       title: "Suplemen & Intervensi Balita", icon: "6", color: "teal",
       questions: [
-        { key: 'vitaminA', label: '35. Terakhir vitamin A?', type: 'text', placeholder: 'Bulan/Tahun' },
-        { key: 'tabletBesiAnak', label: '36. Tablet zat besi rutin?', type: 'select', options: ['Ya', 'Jarang', 'Tidak'] },
-        { key: 'obatCacing', label: '37. Pernah obat cacing?', type: 'yesno' },
-        { key: 'intervensiGizi', label: '38. Pernah intervensi gizi?', type: 'yesno' },
-        { key: 'jenisIntervensi', label: '39. Jenis intervensi?', type: 'multiselect', options: ['Pemberian Makanan Tambahan', 'Makanan padat gizi (RUTF)', 'Edukasi gizi', 'Rujukan ke puskesmas/RS', 'Lainnya'] },
+        { key: 'vitaminA', label: '35. Kapan terakhir kali balita mendapat vitamin A? *', type: 'text', required: true, placeholder: 'Contoh: Agustus 2024', helper: 'Tuliskan bulan dan tahun. Contoh: Agustus 2024' },
+        { key: 'tabletBesiAnak', label: '36. Apakah anak rutin minum tablet zat besi (tablet berwarna merah)? *', type: 'select', required: true, options: ['Ya', 'Jarang', 'Tidak'] },
+        { key: 'obatCacing', label: '37. Apakah anak pernah minum obat cacing dari posyandu, puskesmas, atau apotek? *', type: 'yesno', required: true, fullWidth: true },
+        { key: 'intervensiGizi', label: '38. Apakah anak pernah mendapatkan intervensi gizi dari posyandu atau puskesmas? *', type: 'yesno', required: true, helper: 'Misalnya: makanan tambahan dari posyandu (PMT), makanan padat gizi untuk anak gizi buruk (RUTF), penyuluhan gizi, atau rujukan ke puskesmas/RS', fullWidth: true },
+        { key: 'jenisIntervensi', label: '39. Jika ya, intervensi gizi apa yang diterima? *', type: 'multiselect', required: true, options: ['Pemberian Makanan Tambahan', 'Makanan padat gizi untuk anak gizi buruk (RUTF)', 'Edukasi gizi', 'Rujukan ke puskesmas/rumah sakit', 'Lainnya'], helper: 'Dapat memilih lebih dari 1 jawaban', showIf: { key: 'intervensiGizi', value: 'Ya' }, fullWidth: true },
       ]
     },
     {
-      title: "Kesehatan & Vaksinasi", icon: "7", color: "blue",
+      title: "Kesehatan & Vaksinasi", icon: "7", color: "blue", dynamic: true,
       questions: [
-        { key: 'vaksin', label: '40. Vaksin yang sudah diterima?', fullWidth: true, type: 'multiselect', options: ['Hepatitis B (<24 Jam)', 'BCG', 'Polio Tetes 1', 'DPT-HB-Hib 1', 'Polio Tetes 2', 'Rota Virus (RV) 1', 'PCV 1', 'DPT-HB-Hib 2', 'Polio Tetes 3', 'Rota Virus (RV) 2', 'PCV 2', 'DPT-HB-Hib 3', 'Polio Tetes 4', 'Polio Suntik (IPV) 1', 'Rota Virus (RV) 3', 'Campak - Rubella (MR)', 'Polio Suntik (IPV) 2', 'Japanese Encephalitis (JE)', 'PCV 3', 'DPT-HB-Hib Lanjutan', 'Campak - Rubella (MR) Lanjutan'] },
-        { key: 'sakit2Minggu', label: '41. Sakit dalam 2 minggu terakhir?', type: 'yesno' },
-        { key: 'jenisPenyakit', label: '42. Jika ya, penyakit apa?', type: 'multiselect', options: ['Tidak sakit', 'Diare', 'ISPA', 'Demam/Malaria', 'Cacingan', 'Lainnya'] },
-        { key: 'penyakitBawaan', label: '70. Penyakit bawaan saat lahir?', type: 'yesno' },
-        { key: 'rawatInap', label: '54. Pernah rawat inap?', type: 'yesno' },
+        { key: 'vaksin', label: '40. Vaksin apa saja yang sudah diterima oleh balita? *', fullWidth: true, type: 'multiselect', required: true, helper: 'Dapat memilih lebih dari satu jawaban', options: ['Hepatitis B (<24 Jam)', 'BCG', 'Polio Tetes 1', 'DPT-HB-Hib 1', 'Polio Tetes 2', 'Rota Virus (RV) 1', 'PCV 1', 'DPT-HB-Hib 2', 'Polio Tetes 3', 'Rota Virus (RV) 2', 'PCV 2', 'DPT-HB-Hib 3', 'Polio Tetes 4', 'Polio Suntik (IPV) 1', 'Rota Virus (RV) 3', 'Campak - Rubella (MR)', 'Polio Suntik (IPV) 2', 'Japanese Encephalitis (JE)', 'PCV 3', 'DPT-HB-Hib Lanjutan', 'Campak - Rubella (MR) Lanjutan'] },
+        { key: 'sakit2Minggu', label: '41. Apakah balita sakit dalam 2 minggu terakhir? *', type: 'yesno', required: true, helper: 'Contoh: batuk, diare, demam, dll.' },
+        { key: 'jenisPenyakit', label: '42. Jika ya, penyakit apa yang diderita? *', type: 'multiselect', required: true, options: ['Tidak sakit', 'Diare', 'ISPA', 'Demam/Malaria', 'Cacingan', 'Lainnya'], helper: 'Dapat memilih lebih dari satu jawaban', showIf: { key: 'sakit2Minggu', value: 'Ya' }, fullWidth: true },
+        { key: 'penyakitBawaan', label: '70. Apakah balita memiliki penyakit bawaan saat lahir? *', type: 'yesno', required: true },
+        { key: 'rawatInap', label: '54. Apakah balita pernah dirawat inap? *', type: 'yesno', required: true },
       ]
     },
     {
-      title: "Konsumsi Makan (Kemarin)", icon: "8", color: "orange",
+      title: "Konsumsi Makan (Kemarin)", icon: "8", color: "orange", dynamic: true,
       questions: [
-        { key: 'asiKemarin', label: '43. Mengonsumsi ASI kemarin?', type: 'yesno' },
-        { key: 'makanPokok', label: '44. Makan makanan pokok?', type: 'yesno' },
-        { key: 'makanKacang', label: '45. Makan kacang-kacangan?', type: 'yesno' },
-        { key: 'produkSusu', label: '46. Makan olahan susu?', type: 'yesno' },
-        { key: 'susuMurni', label: '47. Minum susu murni 100%?', fullWidth: true, type: 'yesno' },
-        { key: 'proteinHewani', label: '48. Makan daging/ayam/ikan/jeroan?', type: 'yesno' },
-        { key: 'telur', label: '49. Makan telur?', type: 'yesno' },
-        { key: 'sayurVitA', label: '50. Makan sayur/buah kaya Vit A?', type: 'yesno' },
-        { key: 'sayurLain', label: '51. Makan sayur/buah lainnya?', type: 'yesno' },
-        { key: 'makananManis', label: '52. Konsumsi manis berlebihan?', type: 'select', options: ['Ya, sering', 'Kadang-kadang', 'Tidak'] },
-        { key: 'bantuanGizi', label: '53. Pernah dapat bantuan makanan?', fullWidth: true, type: 'yesno' },
+        { key: 'asiKemarin', label: '43. Apakah sehari sebelumnya anak mengonsumsi ASI? *', type: 'yesno', required: true },
+        { key: 'makanPokok', label: '44. Apakah kemarin anak makan makanan pokok? *', type: 'yesno', required: true, helper: 'Seperti nasi, bubur, mie, jagung, roti, atau umbi-umbian seperti kentang dan ubi', fullWidth: true },
+        { key: 'makanKacang', label: '45. Apakah kemarin anak makan makanan dari kacang-kacangan? *', type: 'yesno', required: true, helper: 'Seperti tempe, tahu, kacang hijau, atau kacang tanah', fullWidth: true },
+        { key: 'produkSusu', label: '46. Apakah anak kemarin mengonsumsi minuman atau makanan yang terbuat dari susu hewani? *', type: 'yesno', required: true, helper: 'Seperti susu, yogurt, atau keju', fullWidth: true },
+        { key: 'susuMurni', label: '47. Apakah anak minum susu murni 100%? *', fullWidth: true, type: 'yesno', required: true, helper: 'Susu murni 100% adalah susu yang berasal langsung dari hewan (sapi, kambing, atau kerbau) tanpa dicampur bahan lain seperti air, gula, perasa, atau pengawet. Contohnya: susu pasteurisasi dalam botol atau kemasan yang bertuliskan "susu segar murni" atau "100% susu sapi", bukan susu bubuk instan, susu formula, atau susu rasa cokelat/stroberi.' },
+        { key: 'proteinHewani', label: '48. Apakah kemarin anak makan makanan yang mengandung daging, ayam, ikan, atau jeroan? *', type: 'yesno', required: true, fullWidth: true },
+        { key: 'telur', label: '49. Apakah kemarin anak makan telur? *', type: 'yesno', required: true, helper: 'Misalnya telur ayam, telur bebek, atau telur puyuh — bisa direbus, digoreng, atau dicampur ke makanan seperti nasi, bubur', fullWidth: true },
+        { key: 'sayurVitA', label: '50. Apakah anak kemarin makan buah dan sayuran kaya Vitamin A? *', type: 'yesno', required: true, helper: 'Seperti pepaya, mangga, wortel, dan sayuran berdaun hijau gelap seperti bayam, kangkung, daun katuk, daun singkong, daun kelor, brokoli, dll.', fullWidth: true },
+        { key: 'sayurLain', label: '51. Apakah kemarin anak makan buah dan sayur lainnya? *', type: 'yesno', required: true, helper: 'Seperti pisang, jeruk, semangka, kol, buncis, atau terong', fullWidth: true },
+        { key: 'makananManis', label: '52. Apakah anak sering mengonsumsi makanan/minuman manis berlebihan? *', type: 'select', required: true, options: ['Ya, sering', 'Kadang-kadang', 'Tidak'], helper: 'Contoh: permen, cokelat, minuman manis' },
+        { key: 'bantuanGizi', label: '53. Apakah anak pernah mendapatkan bantuan atau makanan tambahan dari posyandu atau puskesmas karena masalah gizi? *', fullWidth: true, type: 'yesno', required: true, helper: 'Contohnya: bubur atau makanan tambahan balita dari posyandu, susu formula khusus, atau makanan bergizi siap saji' },
       ]
     },
     {
-      title: "Pola Hidup & Lingkungan", icon: "9", color: "green",
+      title: "Pola Hidup & Lingkungan", icon: "9", color: "green", dynamic: true,
       questions: [
-        { key: 'jamTidur', label: '55. Rata-rata jam tidur per hari', type: 'number' },
-        { key: 'aktivitasLuar', label: '56. Lama aktivitas luar ruangan?', type: 'select', options: ['Kurang dari 1 jam', '1-3 jam', 'Lebih dari 3 jam'] },
-        { key: 'tipeAnak', label: '57. Tingkat aktivitas anak?', type: 'select', options: ['Sangat aktif', 'Cukup aktif', 'Cenderung diam'] },
-        { key: 'ibuBekerja', label: '58. Apakah ibu bekerja?', type: 'yesno' },
-        { key: 'pengetahuanGizi', label: '59. Pengetahuan gizi ibu?', type: 'select', options: ['Baik', 'Cukup', 'Kurang'] },
-        { key: 'polaAsuh', label: '60. Pola asuh makan balita?', type: 'select', options: ['Responsive feeding', 'Pemaksaan makan', 'Dibiarkan makan sendiri'] },
-        { key: 'bpjs', label: '61. Punya BPJS?', type: 'yesno' },
-        { key: 'perokok', label: '62. Ada perokok di rumah?', type: 'yesno' },
-        { key: 'sumberAir', label: '63. Sumber air minum utama?', type: 'select', options: ['PDAM', 'Sumur', 'Air Isi Ulang/Galon', 'Lainnya'] },
-        { key: 'kualitasAir', label: '64. Kualitas air minum?', type: 'select', options: ['Diolah/dimasak', 'Bersih tanpa pengolahan (Galon)', 'Air tercemar/tidak layak'] },
-        { key: 'sanitasi', label: '65. Jenis sanitasi keluarga?', fullWidth: true, type: 'select', options: ['Jamban dengan septic tank', 'Jamban langsung ke selokan', 'Buang air di sungai/kebun'] },
-        { key: 'kebersihanRumah', label: '66. Kondisi kebersihan rumah?', type: 'select', options: ['Bersih dan terawat', 'Cukup bersih', 'Kurang bersih'] },
-        { key: 'cuciTangan', label: '67. Kebiasaan cuci tangan?', type: 'select', options: ['Selalu', 'Sering', 'Kadang-kadang', 'Tidak Pernah'] },
+        { key: 'jamTidur', label: '55. Rata-rata jam tidur balita per hari *', type: 'number', required: true, placeholder: 'Contoh: 10 atau 10.5', helper: 'Tuliskan angka saja. Gunakan tanda titik (.) jika ada desimal. Contoh: 10 atau 10.5' },
+        { key: 'aktivitasLuar', label: '56. Berapa lama aktivitas luar ruangan balita per hari? *', type: 'select', required: true, options: ['Kurang dari 1 jam per hari', '1 - 3 jam per hari', 'Lebih dari 3 jam per hari'] },
+        { key: 'tipeAnak', label: '57. Apakah anak termasuk aktif atau cenderung diam? *', type: 'select', required: true, options: ['Sangat aktif (banyak bergerak/bermain)', 'Cukup aktif (kadang bermain, kadang diam)', 'Cenderung diam (lebih banyak duduk atau menonton)'] },
+        { key: 'ibuBekerja', label: '58. Apakah ibu bekerja? *', type: 'yesno', required: true },
+        { key: 'pengetahuanGizi', label: '59. Pengetahuan ibu tentang gizi balita *', type: 'select', required: true, options: ['Baik', 'Cukup', 'Kurang'] },
+        { key: 'polaAsuh', label: '60. Pola asuh makan balita *', type: 'select', required: true, options: ['Responsive feeding (sabar, mengikuti tanda lapar/kenyang)', 'Pemaksaan makan', 'Dibiarkan makan sendiri tanpa pengawasan'] },
+        { key: 'bpjs', label: '61. Apakah balita terdaftar dalam kepesertaan BPJS? *', type: 'yesno', required: true },
+        { key: 'perokok', label: '62. Apakah ada anggota keluarga yang merokok di rumah? *', type: 'yesno', required: true },
+        { key: 'sumberAir', label: '63. Sumber air minum utama di rumah *', type: 'select', required: true, options: ['PDAM', 'Sumur', 'Air Isi Ulang/Galon/Kemasan', 'Lainnya'] },
+        { key: 'kualitasAir', label: '64. Kualitas air minum *', type: 'select', required: true, options: ['Diolah/dimasak', 'Bersih tanpa pengolahan (Galon/Air mineral kemasan)', 'Air tercemar/tidak layak'] },
+        { key: 'sanitasi', label: '65. Jenis sanitasi yang digunakan keluarga *', fullWidth: true, type: 'select', required: true, options: ['Toilet atau jamban dengan tangki penampung kotoran (septic tank)', 'Toilet atau jamban tanpa tangki penampung, langsung keluar ke selokan', 'Buang air besar di sungai, kebun, atau tempat terbuka'] },
+        { key: 'kebersihanRumah', label: '66. Kondisi kebersihan lingkungan rumah *', type: 'select', required: true, options: ['Bersih dan terawat', 'Cukup bersih', 'Kurang bersih'] },
+        { key: 'cuciTangan', label: '67. Kebiasaan mencuci tangan sebelum memberi makan balita? *', type: 'select', required: true, options: ['Selalu', 'Sering', 'Kadang-kadang', 'Tidak Pernah'] },
       ]
     },
     {
-      title: "Akses, Psikologi & Ekonomi", icon: "10", color: "indigo",
+      title: "Akses, Psikologi & Ekonomi", icon: "10", color: "indigo", dynamic: true,
       questions: [
-        { key: 'aksesFaskes', label: '68. Akses ke faskes?', type: 'select', options: ['Mudah (< 20 menit)', 'Sulit (> 30 menit)', 'Tidak ada akses'] },
-        { key: 'rutinPosyandu', label: '69. Seberapa sering ke Posyandu?', type: 'select', options: ['Rutin setiap bulan', 'Tidak rutin', 'Jarang', 'Tidak pernah'] },
-        { key: 'babyBlues', label: '71. Pernah sedih berlebihan pasca melahirkan?', fullWidth: true, type: 'yesno' },
-        { key: 'depresi', label: '72. Sering sedih/hilang semangat belakangan ini?', fullWidth: true, type: 'yesno' },
-        { key: 'pendidikanIbu', label: '73. Pendidikan terakhir Ibu?', type: 'select', options: ['SD/sederajat', 'SMP/sederajat', 'SMA/sederajat', 'Diploma (D1-D3)', 'S1', 'S2 ke atas'] },
-        { key: 'pendidikanAyah', label: '74. Pendidikan terakhir Ayah?', type: 'select', options: ['SD/sederajat', 'SMP/sederajat', 'SMA/sederajat', 'Diploma (D1-D3)', 'S1', 'S2 ke atas'] },
-        { key: 'pernahPenyuluhan', label: '75. Pernah dapat penyuluhan gizi?', type: 'yesno' },
-        { key: 'frekPenyuluhan', label: '76. Frekuensi penyuluhan?', type: 'select', options: ['Setahun sekali', 'Setahun > sekali', 'Jarang', 'Belum pernah'] },
-        { key: 'pahamGizi', label: '77. Paham makanan sehat balita?', type: 'select', options: ['Tidak paham', 'Kurang paham', 'Cukup paham', 'Paham'] },
-        { key: 'pekerjaanAyah', label: '78. Pekerjaan utama kepala keluarga?', type: 'text' },
-        { key: 'jumlahAnggota', label: '79. Jumlah anggota rumah tangga?', type: 'number' },
-        { key: 'pendapatan', label: '80. Pendapatan bulanan keluarga?', type: 'select', options: ['Kurang dari Rp1.000.000', 'Rp1.000.000 - Rp2.999.999', 'Rp3.000.000 - Rp4.999.999', 'Rp5.000.000 ke atas'] },
-        { key: 'jarakPasar', label: '81. Waktu tempuh ke pasar?', type: 'select', options: ['Kurang dari 10 menit', '10-30 menit', 'Lebih dari 30 menit'] },
-        { key: 'pantangan', label: '82. Ada pantangan makanan?', fullWidth: true, type: 'yesno' },
-        { key: 'pengambilKeputusan', label: '83. Siapa penentu makanan anak?', type: 'select', options: ['Ibu', 'Ayah', 'Nenek/Kakek', 'Bersama (Ibu & Ayah)'] },
+        { key: 'aksesFaskes', label: '68. Akses ke fasilitas kesehatan (Posyandu/Puskesmas/Rumah Sakit) *', type: 'select', required: true, options: ['Mudah dijangkau (kurang dari 20 menit)', 'Sulit dijangkau (lebih dari 30 menit)', 'Tidak ada akses'] },
+        { key: 'rutinPosyandu', label: '69. Seberapa sering melakukan kunjungan ke Posyandu per bulan? *', type: 'select', required: true, options: ['Rutin setiap bulan', 'Tidak rutin', 'Jarang', 'Tidak pernah'] },
+        { key: 'babyBlues', label: '71. Apakah setelah melahirkan Ibu pernah merasa sedih berlebihan, mudah menangis, cemas, atau sulit tidur selama beberapa hari hingga minggu? *', fullWidth: true, type: 'yesno', required: true, helper: 'Kondisi ini sering disebut "baby blues" atau perasaan sedih setelah melahirkan' },
+        { key: 'depresi', label: '72. Dalam beberapa bulan terakhir, apakah Ibu sering merasa sedih berkepanjangan, kehilangan semangat, atau sulit tidur karena banyak pikiran? *', fullWidth: true, type: 'yesno', required: true },
+        { key: 'pendidikanIbu', label: '73. Pendidikan terakhir Ibu Balita *', type: 'select', required: true, options: ['SD/sederajat', 'SMP/sederajat', 'SMA/sederajat', 'Diploma (D1–D3)', 'S1', 'S2 ke atas'] },
+        { key: 'pendidikanAyah', label: '74. Pendidikan terakhir Ayah Balita *', type: 'select', required: true, options: ['SD/sederajat', 'SMP/sederajat', 'SMA/sederajat', 'Diploma (D1–D3)', 'S1', 'S2 ke atas'] },
+        { key: 'pernahPenyuluhan', label: '75. Apakah Ibu pernah mendapatkan penyuluhan tentang gizi anak di posyandu/puskesmas? *', type: 'yesno', required: true, fullWidth: true },
+        { key: 'frekPenyuluhan', label: '76. Seberapa sering Ibu mengikuti kegiatan penyuluhan atau kelas ibu balita? *', type: 'select', required: true, options: ['Setahun sekali', 'Setahun lebih dari sekali', 'Jarang', 'Belum pernah'] },
+        { key: 'pahamGizi', label: '77. Apakah Ibu merasa paham tentang makanan sehat untuk balita? *', type: 'select', required: true, options: ['Tidak paham', 'Kurang paham', 'Cukup paham', 'Paham'], helper: 'Porsi, variasi, dan frekuensi makan' },
+        { key: 'pekerjaanAyah', label: '78. Pekerjaan utama kepala keluarga *', type: 'text', required: true, placeholder: 'Contoh: Wiraswasta, Buruh, PNS, dll.' },
+        { key: 'jumlahAnggota', label: '79. Jumlah anggota rumah tangga (termasuk balita) *', type: 'number', required: true, placeholder: 'Contoh: 4', helper: 'Tuliskan jumlahnya saja. Contoh: 4 jika terdiri dari ayah, ibu, balita, dan nenek' },
+        { key: 'pendapatan', label: '80. Perkiraan pendapatan bulanan keluarga *', type: 'select', required: true, options: ['Kurang dari Rp1.000.000', 'Rp1.000.000 – Rp2.999.999', 'Rp3.000.000 – Rp4.999.999', 'Rp5.000.000 ke atas'] },
+        { key: 'jarakPasar', label: '81. Jarak atau waktu tempuh ke pasar/penjual makanan sehat terdekat *', type: 'select', required: true, options: ['Kurang dari 10 menit', '10 – 30 menit', 'Lebih dari 30 menit'] },
+        { key: 'pantangan', label: '82. Apakah di keluarga Ibu ada makanan yang tidak boleh dimakan oleh anak (dilarang atau dipantang)? *', fullWidth: true, type: 'yesno', required: true, helper: 'Misalnya: tidak boleh makan ikan, telur, daging, atau makanan tertentu karena alasan adat atau kepercayaan' },
+        { key: 'pengambilKeputusan', label: '83. Siapa yang biasanya menentukan makanan apa yang dimakan oleh anak di rumah? *', type: 'select', required: true, options: ['Ibu', 'Ayah', 'Nenek/Kakek', 'Bersama (Ibu dan Ayah)'] },
       ]
     }
   ], []);
@@ -214,6 +220,7 @@ function ParentFormPage() {
           const d = await res.json();
           if (d.has_survey && d.survey) {
             setFormData(prev => ({ ...prev, ...d.survey }));
+            if (d.last_survey_date) setLastSurveyDate(d.last_survey_date);
             return; // We have restored from backend
           }
         }
@@ -259,7 +266,7 @@ function ParentFormPage() {
   }, [balitaList, formData.namaBalita]);
 
   // Handle balita selection from searchable dropdown
-  const handleBalitaSelect = (item) => {
+  const handleBalitaSelect = async (item) => {
     if (!item) {
       // Clear selection
       setSelectedBalita(null);
@@ -271,26 +278,56 @@ function ParentFormPage() {
         namaKelurahan: '',
         tanggalLahirBalita: '',
       }));
+      setLastSurveyDate(null);
       return;
     }
-    setSelectedBalita(item);
-    setFormData(prev => ({
-      ...prev,
+
+    // Set identity fields immediately (always from balita record, not survey)
+    const identityFields = {
       namaBalita: item.nama || '',
-      namaOrangTua: item.nama_ibu || prev.namaOrangTua || '',
+      namaOrangTua: item.nama_ibu || '',
       namaKecamatan: item.kecamatan || 'Astananyar',
-      namaKelurahan: item.kelurahan || prev.namaKelurahan || '',
-      namaPosyandu: item.posyandu_nama || prev.namaPosyandu || '',
-      tanggalLahirBalita: item.tanggal_lahir || prev.tanggalLahirBalita || '',
-    }));
+      namaKelurahan: item.kelurahan || '',
+      namaPosyandu: item.posyandu_nama || '',
+      tanggalLahirBalita: item.tanggal_lahir || '',
+    };
+    setSelectedBalita(item);
+
+    // Try to fetch the previous survey for this specific balita
+    try {
+      const res = await fetch(`/api/survey/me?balita_uuid=${item.uuid}`, { credentials: 'include' });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.has_survey && d.survey) {
+          // Pre-fill from survey, but override identity fields with live balita data
+          setFormData(prev => ({ ...prev, ...d.survey, ...identityFields }));
+          if (d.last_survey_date) setLastSurveyDate(d.last_survey_date);
+          setSectionErrors({});
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch survey for balita', e);
+    }
+
+    // No prior survey — just fill identity fields
+    setLastSurveyDate(null);
+    setFormData(prev => ({ ...prev, ...identityFields }));
+    setSectionErrors(prev => { const n = { ...prev }; delete n['namaBalita']; return n; });
   };
 
-  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (sectionErrors[name]) setSectionErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+  };
   const toggleMultiSelect = (key, option) => {
     setFormData(prev => {
       const c = Array.isArray(prev[key]) ? prev[key] : [];
-      return { ...prev, [key]: c.includes(option) ? c.filter(i => i !== option) : [...c, option] };
+      const next = c.includes(option) ? c.filter(i => i !== option) : [...c, option];
+      return { ...prev, [key]: next };
     });
+    if (sectionErrors[key]) setSectionErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
   };
   const handleReset = () => {
     setFormData(initialState);
@@ -300,6 +337,56 @@ function ParentFormPage() {
     setPredictionData(null);
     setRekomendasiData(null);
     setSubmitError('');
+    setSectionErrors({});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ─── Section Validation ──────────────────────────────
+  const validateCurrentSection = () => {
+    const section = formStructure[activeSection];
+    const visibleQs = section.questions.filter(q => {
+      if (!q.showIf) return true;
+      const triggerVal = formData[q.showIf.key];
+      if (Array.isArray(q.showIf.value)) return q.showIf.value.includes(triggerVal);
+      return triggerVal === q.showIf.value;
+    });
+
+    const errors = {};
+    visibleQs.forEach(q => {
+      if (!q.required) return;
+      const v = formData[q.key];
+      const isEmpty = v === '' || v === null || v === undefined || (Array.isArray(v) && v.length === 0);
+      if (isEmpty) errors[q.key] = true;
+    });
+
+    setSectionErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      // Scroll to the first error field
+      const firstKey = Object.keys(errors)[0];
+      const el = document.getElementById(`field-${firstKey}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  };
+
+  const handleNextSection = () => {
+    if (!validateCurrentSection()) return;
+    setSectionErrors({});
+    setActiveSection(prev => prev + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSectionClick = (idx) => {
+    // Allow going back freely; validate before going forward
+    if (idx > activeSection) {
+      if (!validateCurrentSection()) return;
+      setSectionErrors({});
+    } else {
+      setSectionErrors({});
+    }
+    setActiveSection(idx);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -326,8 +413,8 @@ function ParentFormPage() {
       });
 
       if (!res.ok) {
-        const d = await res.json();
-        console.warn('Backend survey save error:', d);
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Gagal menyimpan data (HTTP ${res.status}). Coba lagi.`);
       }
 
       // ── Show prediction result from selected balita's last measurement ──
@@ -343,6 +430,23 @@ function ParentFormPage() {
       setIsUpdatingRek(true);
       try {
         const mlUrl = process.env.NEXT_PUBLIC_ML_SERVICE_URL || 'http://localhost:8000';
+
+        // Map form long-text dropdown values to exact Python enum strings
+        const _mapPolaAsuh = (v) => {
+          if (!v) return 'Responsive feeding';
+          const l = v.toLowerCase();
+          if (l.includes('pemaksaan')) return 'Pemaksaan makan';
+          if (l.includes('dibiarkan')) return 'Dibiarkan makan sendiri';
+          return 'Responsive feeding';
+        };
+        const _mapSanitasi = (v) => {
+          if (!v) return 'Toilet dengan septic tank';
+          const l = v.toLowerCase();
+          if (l.includes('sungai') || l.includes('kebun') || l.includes('terbuka')) return 'Buang air di sungai/kebun';
+          if ((l.includes('tanpa') || l.includes('langsung')) && l.includes('selokan')) return 'Toilet tanpa septic tank (ke selokan)';
+          return 'Toilet dengan septic tank';
+        };
+
         const rekPayload = {
           usia_bulan: selectedBalita.tanggal_lahir
             ? Math.floor((Date.now() - new Date(selectedBalita.tanggal_lahir).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
@@ -352,9 +456,9 @@ function ParentFormPage() {
           status_gizi_tb_u: selectedBalita.status_gizi_tbu || 'Normal',
           asi_eksklusif: formData.asiEksklusif === 'Ya',
           konsumsi_protein_hewani: formData.mpasiHewani || 'Ya, setiap hari',
-          pola_asuh_makan: formData.polaAsuh || 'Responsive feeding',
+          pola_asuh_makan: _mapPolaAsuh(formData.polaAsuh),
           riwayat_sakit_2minggu: formData.sakit2Minggu === 'Ya',
-          jenis_sanitasi: formData.sanitasi || 'Toilet dengan septic tank',
+          jenis_sanitasi: _mapSanitasi(formData.sanitasi),
           rutin_vitamin_a: !!formData.vitaminA,
           rutin_posyandu: formData.rutinPosyandu === 'Rutin setiap bulan',
         };
@@ -404,14 +508,23 @@ function ParentFormPage() {
 
   const inputClass = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-900 focus:bg-white focus:ring-2 focus:ring-gray-900/5 outline-none transition-all text-sm text-gray-900 placeholder:text-gray-400";
 
-  // Progress
-  const totalQuestions = formStructure.reduce((sum, s) => sum + s.questions.length, 0);
-  const answeredQuestions = formStructure.reduce((sum, s) => {
-    return sum + s.questions.filter(q => {
-      const v = formData[q.key];
-      return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
-    }).length;
-  }, 0);
+  // Progress — only count visible (showIf-satisfied) questions
+  const getVisibleQuestions = (sections, data) =>
+    sections.flatMap(s =>
+      s.questions.filter(q => {
+        if (!q.showIf) return true;
+        const triggerVal = data[q.showIf.key];
+        if (Array.isArray(q.showIf.value)) return q.showIf.value.includes(triggerVal);
+        return triggerVal === q.showIf.value;
+      })
+    );
+
+  const visibleQuestions = getVisibleQuestions(formStructure, formData);
+  const totalQuestions = visibleQuestions.length;
+  const answeredQuestions = visibleQuestions.filter(q => {
+    const v = formData[q.key];
+    return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
+  }).length;
   const progressPercent = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
 
   // ────────────── RENDER ──────────────
@@ -454,13 +567,23 @@ function ParentFormPage() {
           <p className="text-sm text-gray-500 mt-2 max-w-xl">Mohon isi data dengan jujur sesuai kondisi sebenarnya untuk keperluan prediksi status gizi balita.</p>
         </div>
 
-        {/* ─── Info Banner ─── */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-3">
-          <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-blue-700 leading-relaxed">
-            <strong>Cara Pengisian:</strong> Pilih nama balita dari dropdown di bagian pertama. Data tanggal lahir, kelurahan, dan kecamatan akan terisi otomatis dari catatan kader. Selanjutnya lengkapi semua pertanyaan kesehatan.
+        {/* ─── Pre-fill / Info Banner ─── */}
+        {lastSurveyDate ? (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3">
+            <RefreshCw size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-amber-800 leading-relaxed">
+              <strong>Data dari kunjungan sebelumnya ({new Date(lastSurveyDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}) telah diisi otomatis.</strong>
+              {' '}Periksa setiap bagian dan <u>perbarui data yang berubah</u> — terutama bagian bertanda <span className="inline-flex items-center gap-0.5 bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold">⟳ Perbarui</span> yang bersifat dinamis (berubah tiap kunjungan).
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-3">
+            <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-blue-700 leading-relaxed">
+              <strong>Cara Pengisian:</strong> Pilih nama balita dari dropdown di bagian pertama. Data tanggal lahir, kelurahan, dan kecamatan akan terisi otomatis dari catatan kader. Selanjutnya lengkapi semua pertanyaan kesehatan.
+            </div>
+          </div>
+        )}
 
         {/* ─── Completion State ─── */}
         {isComplete ? (
@@ -565,7 +688,7 @@ function ParentFormPage() {
               {formStructure.map((section, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setActiveSection(idx)}
+                  onClick={() => handleSectionClick(idx)}
                   className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                     activeSection === idx
                       ? 'bg-gray-900 text-white'
@@ -577,6 +700,9 @@ function ParentFormPage() {
                   }`}>{section.icon}</span>
                   <span className="hidden sm:inline">{section.title}</span>
                   <span className="sm:hidden">{section.icon}</span>
+                  {section.dynamic && lastSurveyDate && (
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSection === idx ? 'bg-amber-300' : 'bg-amber-400'}`} title="Perbarui setiap kunjungan" />
+                  )}
                 </button>
               ))}
             </div>
@@ -586,13 +712,32 @@ function ParentFormPage() {
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
                 <div>
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Bagian {activeSection + 1} dari {formStructure.length}</p>
-                  <h3 className="text-lg font-bold text-gray-900">{formStructure[activeSection].title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-gray-900">{formStructure[activeSection].title}</h3>
+                    {formStructure[activeSection].dynamic && lastSurveyDate && (
+                      <span className="inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-200">
+                        ⟳ Perbarui
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs text-gray-400 font-medium">{formStructure[activeSection].questions.length} pertanyaan</span>
+                <span className="text-xs text-gray-400 font-medium">{formStructure[activeSection].questions.filter(q => {
+                  if (!q.showIf) return true;
+                  const triggerVal = formData[q.showIf.key];
+                  if (Array.isArray(q.showIf.value)) return q.showIf.value.includes(triggerVal);
+                  return triggerVal === q.showIf.value;
+                }).length} pertanyaan</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                {formStructure[activeSection].questions.map((q) => {
+                {formStructure[activeSection].questions.filter((q) => {
+                  if (!q.showIf) return true;
+                  const triggerVal = formData[q.showIf.key];
+                  if (Array.isArray(q.showIf.value)) {
+                    return q.showIf.value.includes(triggerVal);
+                  }
+                  return triggerVal === q.showIf.value;
+                }).map((q) => {
                   let input;
                   if (q.type === 'balita_select') {
                     // Special searchable dropdown for balita
@@ -629,13 +774,13 @@ function ParentFormPage() {
                       ? <input type="text" value={fmtDate(formData[q.key])} readOnly className={`${inputClass} bg-gray-100 cursor-not-allowed`} placeholder={q.placeholder || 'Terisi otomatis'} />
                       : <CustomDatePicker name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih tanggal" defaultYear={new Date().getFullYear() - 2} />;
                   } else if (q.type === 'yesno') {
-                    input = <CustomDropdown name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih jawaban" options={[{ value: 'Ya', label: 'Ya' }, { value: 'Tidak', label: 'Tidak' }]} />;
+                    input = <CustomDropdown name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih jawaban" options={[{ value: 'Ya', label: 'Ya' }, { value: 'Tidak', label: 'Tidak' }]} error={!!sectionErrors[q.key]} />;
                   } else if (q.type === 'select') {
-                    input = <CustomDropdown name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih jawaban" options={q.options.map(o => ({ value: o, label: o }))} />;
+                    input = <CustomDropdown name={q.key} value={formData[q.key]} onChange={handleChange} placeholder="Pilih jawaban" options={q.options.map(o => ({ value: o, label: o }))} error={!!sectionErrors[q.key]} />;
                   } else if (q.type === 'multiselect') {
                     const sel = Array.isArray(formData[q.key]) ? formData[q.key] : [];
                     input = (
-                      <div className="space-y-1 mt-1 bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-48 overflow-y-auto">
+                      <div className={`space-y-1 mt-1 bg-gray-50 p-3 rounded-xl border max-h-48 overflow-y-auto ${sectionErrors[q.key] ? 'border-red-400 bg-red-50' : 'border-gray-200'}`}>
                         {q.options.map(opt => (
                           <label key={opt} className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer hover:bg-white p-2 rounded-lg transition-colors">
                             <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900" checked={sel.includes(opt)} onChange={() => toggleMultiSelect(q.key, opt)} />
@@ -653,16 +798,21 @@ function ParentFormPage() {
                       value={formData[q.key]}
                       onChange={q.readonly ? undefined : handleChange}
                       readOnly={!!q.readonly}
-                      className={`${inputClass} ${q.readonly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      className={`${inputClass} ${q.readonly ? 'bg-gray-100 cursor-not-allowed' : ''} ${sectionErrors[q.key] ? '!border-red-400 !bg-red-50 focus:!border-red-500 focus:!ring-red-500/10' : ''}`}
                       placeholder={q.placeholder || (q.readonly ? 'Terisi otomatis' : 'Tulis jawaban...')}
                     />;
                   }
 
                   return (
-                    <div key={q.key} className={q.fullWidth ? 'sm:col-span-2' : ''}>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 leading-relaxed">{q.label}</label>
+                    <div key={q.key} id={`field-${q.key}`} className={q.fullWidth ? 'sm:col-span-2' : ''}>
+                      <label className={`block text-sm font-medium mb-2 leading-relaxed ${sectionErrors[q.key] ? 'text-red-600' : 'text-gray-700'}`}>{q.label}</label>
                       {input}
-                      {q.helper && <p className="text-xs text-gray-400 mt-1.5 italic">{q.helper}</p>}
+                      {q.helper && !sectionErrors[q.key] && <p className="text-xs text-gray-400 mt-1.5 italic">{q.helper}</p>}
+                      {sectionErrors[q.key] && (
+                        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 font-medium">
+                          <AlertCircle size={12} className="flex-shrink-0" /> Pertanyaan ini wajib diisi
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -674,10 +824,23 @@ function ParentFormPage() {
                 </div>
               )}
 
+              {/* Section validation error summary */}
+              {Object.keys(sectionErrors).length > 0 && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-700 mb-1">
+                      {Object.keys(sectionErrors).length} pertanyaan wajib belum diisi
+                    </p>
+                    <p className="text-xs text-red-500">Scroll ke atas untuk melihat pertanyaan yang ditandai merah, lalu isi sebelum melanjutkan.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Navigation */}
               <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
                 <button
-                  onClick={() => { setActiveSection(Math.max(0, activeSection - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  onClick={() => { setSectionErrors({}); setActiveSection(Math.max(0, activeSection - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   disabled={activeSection === 0}
                   className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
@@ -685,7 +848,7 @@ function ParentFormPage() {
                 </button>
                 {activeSection < formStructure.length - 1 ? (
                   <button
-                    onClick={() => { setActiveSection(activeSection + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    onClick={handleNextSection}
                     className="px-5 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800 transition-colors flex items-center gap-1.5"
                   >
                     Selanjutnya <ChevronRight size={14} />
@@ -695,9 +858,13 @@ function ParentFormPage() {
                     <button onClick={handleReset} className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center gap-2">
                       <RefreshCw size={14} /> Reset
                     </button>
-                    <button onClick={handleSubmit} disabled={isSubmitting}
+                    <button onClick={() => { if (!validateCurrentSection()) return; handleSubmit(); }} disabled={isSubmitting}
                       className="px-6 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-xl hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-50">
-                      {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Menyimpan...</> : <><Save size={14} /> Simpan & Kirim</>}
+                      {isSubmitting
+                        ? <><Loader2 size={14} className="animate-spin" /> Menyimpan...</>
+                        : lastSurveyDate
+                          ? <><Save size={14} /> Perbarui &amp; Simpan</>
+                          : <><Save size={14} /> Simpan &amp; Kirim</>}
                     </button>
                   </div>
                 )}

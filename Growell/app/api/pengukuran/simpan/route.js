@@ -51,7 +51,7 @@ export async function POST(request) {
     const posyandu_id = kaderRows[0]?.posyandu_id || null;
 
     // ── Find or create balita ──────────────────────────────────────
-    let balitaId, balitaUuid;
+    let balitaId, balitaUuid, isNewBalita = false;
     const [existing] = await pool.query(
       'SELECT id, uuid FROM balita WHERE nama = ? AND tanggal_lahir = ? LIMIT 1',
       [nama_balita, tanggal_lahir]
@@ -73,6 +73,7 @@ export async function POST(request) {
         );
       }
     } else {
+      isNewBalita = true;
       balitaUuid = uuidv4();
       const [newBalita] = await pool.query(
         `INSERT INTO balita
@@ -124,7 +125,10 @@ export async function POST(request) {
 
     return NextResponse.json(
       {
-        message: 'Data berhasil disimpan',
+        message: isNewBalita
+          ? `Data balita baru "${nama_balita}" berhasil disimpan`
+          : `Pengukuran baru untuk "${nama_balita}" berhasil ditambahkan`,
+        is_new_balita: isNewBalita,
         balita: { id: balitaId, uuid: balitaUuid, nama: nama_balita },
         pengukuran: { id: result.insertId, uuid: pengUuid },
       },

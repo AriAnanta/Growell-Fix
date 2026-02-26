@@ -28,6 +28,8 @@ export async function POST(request) {
       if (balitaRows.length === 0) return NextResponse.json({ error: 'Balita tidak ditemukan' }, { status: 404 });
       balitaId = balitaRows[0].id;
       balitaUuid = balitaRows[0].uuid;
+      // Link this balita to the orang_tua account if not yet linked
+      await pool.query('UPDATE balita SET orang_tua_id = ? WHERE id = ? AND orang_tua_id IS NULL', [user.id, balitaId]);
     } else {
       if (!nama_balita || !tanggal_lahir) {
         return NextResponse.json({ error: 'namaLengkapBalita dan tanggalLahirBalita wajib diisi jika balita_uuid kosong' }, { status: 400 });
@@ -166,7 +168,7 @@ export async function POST(request) {
 
     // Notify kader if they have pending measurements for this child
     const [kaderUsers] = await pool.query(
-      `SELECT DISTINCT p.kader_id FROM pengukuran p
+      `SELECT p.kader_id FROM pengukuran p
        WHERE p.balita_id = ? AND p.kader_id IS NOT NULL
        ORDER BY p.created_at DESC LIMIT 1`,
       [balitaId]
