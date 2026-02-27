@@ -553,6 +553,13 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator { opacity: 0; }
 .slide-in-stagger > *:nth-child(5) { animation-delay: 0.33s; }
 .slide-in-stagger > *:nth-child(6) { animation-delay: 0.4s; }
 
+/* ========== Wiggle Animation ========== */
+@keyframes wiggleSoft {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+.animate-wiggle-soft { animation: wiggleSoft 2.5s ease-in-out infinite; }
+
 /* ========== Decorative Orb Background ========== */
 .bg-orbs::before,
 .bg-orbs::after {
