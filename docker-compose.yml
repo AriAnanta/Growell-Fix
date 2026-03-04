@@ -74,6 +74,10 @@ services:
     build:
       context: ./Growell
       dockerfile: Dockerfile
+      args:
+        # Variabel ini di-bake ke bundle Next.js saat build, harus diisi via .env
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_ML_SERVICE_URL=${NEXT_PUBLIC_ML_SERVICE_URL:-http://localhost:8000}
     container_name: growell-app
     restart: unless-stopped
     ports:
@@ -88,8 +92,8 @@ services:
       - JWT_EXPIRES_IN=7d
       - ML_SERVICE_URL=http://ml:8000
       - ML_API_KEY=growell123
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000
-      - NEXT_PUBLIC_ML_SERVICE_URL=http://localhost:8000
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_ML_SERVICE_URL=${NEXT_PUBLIC_ML_SERVICE_URL:-http://localhost:8000}
       - UPLOAD_DIR=./uploads
     depends_on:
       db:

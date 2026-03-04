@@ -9,6 +9,12 @@ RUN npm ci
 
 COPY . .
 
+# Build args untuk NEXT_PUBLIC_* env vars (di-bake ke bundle saat build time)
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ARG NEXT_PUBLIC_ML_SERVICE_URL=http://localhost:8000
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_ML_SERVICE_URL=$NEXT_PUBLIC_ML_SERVICE_URL
+
 # Build Next.js
 RUN npm run build
 

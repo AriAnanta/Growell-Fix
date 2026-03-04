@@ -168,6 +168,39 @@ for _model in ta_models.values():
 if ta_feature_order is None:
     ta_feature_order = ta_model_features
 
+# --- 1c. Load TA2 Models (Step11 best models) ---
+TA2_MODELS_DIR = TA_BASE_DIR / "models_step11_ta2"
+
+TA2_MODEL_PATHS = {
+    "status_gizi_bbtb": TA2_MODELS_DIR / "best_model_status_gizi_bbtb.joblib",
+    "status_gizi_bbu":  TA2_MODELS_DIR / "best_model_status_gizi_bbu.joblib",
+    "status_gizi_tbu":  TA2_MODELS_DIR / "best_model_status_gizi_tbu.joblib",
+}
+
+try:
+    ta2_models: Dict[str, Any] = {
+        target: joblib.load(path)
+        for target, path in TA2_MODEL_PATHS.items()
+    }
+    print("Successfully loaded TA2 (step11) models.")
+except Exception as _e:
+    print(f"Warning: TA2 models not loaded — {_e}")
+    ta2_models = {}
+
+# Feature order untuk ta2 — ambil dari model jika ada, fallback ke ta_feature_order
+ta2_feature_order = ta_feature_order
+for _m2 in ta2_models.values():
+    if hasattr(_m2, "feature_names_in_"):
+        ta2_feature_order = list(_m2.feature_names_in_)
+        break
+try:
+    _ta2_mf_path = TA2_MODELS_DIR / "model_features.json"
+    if _ta2_mf_path.exists():
+        with _ta2_mf_path.open("r", encoding="utf-8") as _f:
+            ta2_feature_order = json.load(_f)
+except Exception:
+    pass
+
 # --- 2. Pydantic Input Model ---
 class BalitaInput(BaseModel):
     Tgl_Lahir: date = Field(..., description="Tanggal lahir balita (YYYY-MM-DD)")
@@ -1030,6 +1063,47 @@ def predict_status_gizi_ta(payload: TAPredictRequest) -> Dict[str, Any]:
             target: _ta_predict_single(model, features, target)
             for target, model in ta_models.items()
         }
+
+        return {"predictions": results}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/predict-ta2", dependencies=[Depends(get_api_key)])
+def predict_status_gizi_ta2(payload: TAPredictRequest) -> Dict[str, Any]:
+    """Prediksi status gizi menggunakan model terbaik Step 11 (models_step11_ta2/)."""
+    if not ta2_models:
+        raise HTTPException(
+            status_code=503,
+            detail="Model TA2 belum di-load. Pastikan folder models_step11_ta2/ ada dan berisi file model."
+        )
+    try:
+        if hasattr(payload.data, "model_dump"):
+            data = payload.data.model_dump()
+        else:
+            data = payload.data.dict()
+
+        # Gunakan pipeline preprocessing yang sama dengan /predict-ta
+        features = preprocess_input_ta(data)
+
+        # Hapus kolom duplikat (pandas kadang buat _1 suffix dari alias expansion)
+        features = features.loc[:, ~features.columns.duplicated(keep='first')]
+
+        results = {}
+        for target, model in ta2_models.items():
+            # Gunakan feature_names_in_ dari model itu sendiri (paling akurat)
+            if hasattr(model, "feature_names_in_"):
+                model_cols = list(model.feature_names_in_)
+            else:
+                model_cols = ta2_feature_order
+
+            # Align DataFrame ke exact kolom yang dipakai waktu training
+            features_aligned = features.reindex(columns=model_cols, fill_value=0)
+            for col in features_aligned.columns:
+                if features_aligned[col].dtype == "object":
+                    features_aligned[col] = pd.to_numeric(features_aligned[col], errors="ignore")
+
+            results[target] = _ta_predict_single(model, features_aligned, target)
 
         return {"predictions": results}
     except Exception as exc:

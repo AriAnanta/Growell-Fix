@@ -4,6 +4,7 @@ Status Gizi Balita 2023.xlsx
 *.xlsx
 *.csv
 Prediksi_Status_Gizi_Balita_Optimal.ipynb
+app copy.py
 # Jupyter Notebooks
 *.ipynb
 .ipynb_checkpoints/
