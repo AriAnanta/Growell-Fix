@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight, ArrowLeft, Check } from 'lucide-react';
-import { saveAuth } from '@/utils/auth';
+
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,7 +36,13 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registrasi gagal');
-      saveAuth(data.user, data.token);
+      // Auto-login after registration to set session cookies
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      if (!loginRes.ok) { router.push('/login'); return; }
       router.push('/orang-tua');
     } catch (err) {
       setError(err.message);

@@ -61,7 +61,8 @@ export async function PUT(request, { params }) {
     }
 
     const allowedFields = ['nama', 'nik', 'tanggal_lahir', 'jenis_kelamin', 'berat_lahir',
-      'panjang_lahir', 'nama_ibu', 'nama_ayah', 'posyandu_id', 'alamat'];
+      'panjang_lahir', 'nama_ibu', 'nama_ayah', 'posyandu_id', 'alamat',
+      'kelurahan', 'nama_posyandu'];
 
     const updates = [];
     const values = [];

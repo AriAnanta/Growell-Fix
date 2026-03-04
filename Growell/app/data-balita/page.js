@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Search, Users, CheckCircle2, AlertCircle, Pencil, Trash2, Loader2 } from 'lucide-react';
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import { apiFetch, isAuthenticated } from '@/utils/auth';
 
@@ -15,6 +15,10 @@ export default function ListDataBalita() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [dashStats, setDashStats] = useState({ total_balita: 0, normal: 0, risiko: 0 });
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState(null); // { uuid, nama }
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return; }
@@ -53,6 +57,26 @@ export default function ListDataBalita() {
       }
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); }
+  };
+
+  // ── Edit: navigate to kader form pre-filled ──────────────────────
+  const openEdit = (item) => {
+    router.push('/kader?edit=' + item.uuid);
+  };
+
+  // ── Delete handlers ────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const res = await apiFetch(`/api/balita/${deleteTarget.uuid}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDeleteTarget(null);
+        await fetchBalita();
+        await fetchDashStats();
+      }
+    } catch (e) { console.error(e); }
+    finally { setDeleteLoading(false); }
   };
 
   const isNormalBbu  = (s) => s === 'Berat Badan Normal';
@@ -206,12 +230,13 @@ export default function ListDataBalita() {
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status BB/TB</th>
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status BB/U</th>
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status TB/U</th>
+                    <th className="text-right py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredData.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-20">
+                      <td colSpan="8" className="text-center py-20">
                         <Users size={40} className="mx-auto mb-3 text-gray-200" />
                         <p className="text-sm font-medium text-gray-400">Tidak ada data ditemukan</p>
                       </td>
@@ -230,6 +255,24 @@ export default function ListDataBalita() {
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbtb)}</td>
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbu)}</td>
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_tbu)}</td>
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              onClick={() => openEdit(item)}
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Edit data balita"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget({ uuid: item.uuid, nama: item.nama })}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Hapus data balita"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
                     </tr>
                   ))}
                 </tbody>
@@ -263,6 +306,39 @@ export default function ListDataBalita() {
           )}
         </div>
       </section>
+
+      {/* ── Delete Confirmation Modal ───────────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleteLoading && setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+              <Trash2 size={22} className="text-red-600" />
+            </div>
+            <h2 className="text-base font-bold text-gray-900 text-center mb-1">Hapus Data Balita?</h2>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Data <span className="font-semibold text-gray-700">{deleteTarget.nama}</span> akan dihapus dan tidak tampil di daftar. Data pengukuran tetap tersimpan.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-40"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-40"
+              >
+                {deleteLoading ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                {deleteLoading ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

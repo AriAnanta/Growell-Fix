@@ -25,6 +25,12 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
   const [contextMenu, setContextMenu] = useState(null); // { msgUuid, x, y }
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   
+  // Confirm Modal (replaces browser confirm())
+  const [confirmModal, setConfirmModal] = useState(null);
+  // confirmModal = { title, message, icon, confirmLabel, confirmClass, onConfirm }
+  const openConfirm = (opts) => setConfirmModal(opts);
+  const closeConfirm = () => setConfirmModal(null);
+
   // Modals
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [availableAhliGizi, setAvailableAhliGizi] = useState([]);
@@ -163,56 +169,88 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
   };
 
   const handleEndConsultation = async () => {
-    if (!confirm('Akhiri konsultasi ini?')) return;
-    try {
-      const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'selesai' }),
-      });
-      if (res.ok) {
-        fetchChatDetail(selectedChat.uuid);
-        fetchConsultations(userData.role); // refresh list
-      }
-    } catch (e) { console.error(e); }
+    openConfirm({
+      title: 'Akhiri Konsultasi?',
+      message: 'Sesi ini akan ditandai selesai. Orang tua tidak dapat membalas pesan lagi.',
+      icon: 'end',
+      confirmLabel: 'Ya, Akhiri',
+      confirmClass: 'bg-orange-500 hover:bg-orange-600',
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'selesai' }),
+          });
+          if (res.ok) {
+            fetchChatDetail(selectedChat.uuid);
+            fetchConsultations(userData.role);
+          }
+        } catch (e) { console.error(e); }
+      },
+    });
   };
 
   const handleDeleteConsultation = async () => {
-    if (!confirm('Hapus percakapan ini? Semua pesan akan hilang permanen.')) return;
     setShowHeaderMenu(false);
-    try {
-      const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}`, { method: 'DELETE' });
-      if (res.ok) {
-        setSelectedChat(null);
-        setMessages([]);
-        window.history.pushState({}, '', '/konsultasi');
-        await fetchConsultations(userData.role);
-      }
-    } catch (e) { console.error(e); }
+    openConfirm({
+      title: 'Hapus Percakapan?',
+      message: 'Semua pesan dalam percakapan ini akan hilang permanen dan tidak bisa dipulihkan.',
+      icon: 'delete',
+      confirmLabel: 'Hapus Permanen',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}`, { method: 'DELETE' });
+          if (res.ok) {
+            setSelectedChat(null);
+            setMessages([]);
+            window.history.pushState({}, '', '/konsultasi');
+            await fetchConsultations(userData.role);
+          }
+        } catch (e) { console.error(e); }
+      },
+    });
   };
 
   const handleDeleteFromList = async (e, consultationUuid) => {
     e.stopPropagation();
-    if (!confirm('Hapus percakapan ini? Semua pesan akan hilang permanen.')) return;
-    try {
-      const res = await apiFetch(`/api/konsultasi/${consultationUuid}`, { method: 'DELETE' });
-      if (res.ok) {
-        if (selectedChat?.uuid === consultationUuid) {
-          setSelectedChat(null);
-          setMessages([]);
-          window.history.pushState({}, '', '/konsultasi');
-        }
-        setConsultations(prev => prev.filter(c => c.uuid !== consultationUuid));
-      }
-    } catch (e) { console.error(e); }
+    openConfirm({
+      title: 'Hapus Percakapan?',
+      message: 'Semua pesan dalam percakapan ini akan hilang permanen dan tidak bisa dipulihkan.',
+      icon: 'delete',
+      confirmLabel: 'Hapus Permanen',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/konsultasi/${consultationUuid}`, { method: 'DELETE' });
+          if (res.ok) {
+            if (selectedChat?.uuid === consultationUuid) {
+              setSelectedChat(null);
+              setMessages([]);
+              window.history.pushState({}, '', '/konsultasi');
+            }
+            setConsultations(prev => prev.filter(c => c.uuid !== consultationUuid));
+          }
+        } catch (e) { console.error(e); }
+      },
+    });
   };
 
   const handleClearHistory = async () => {
-    if (!confirm('Hapus semua riwayat pesan? Percakapan tetap ada tapi semua pesan dihapus.')) return;
     setShowHeaderMenu(false);
-    try {
-      const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}/message`, { method: 'DELETE' });
-      if (res.ok) setMessages([]);
-    } catch (e) { console.error(e); }
+    openConfirm({
+      title: 'Hapus Riwayat Chat?',
+      message: 'Semua pesan akan dihapus permanen. Percakapan tetap ada tapi seluruh riwayat pesan tidak bisa dipulihkan.',
+      icon: 'clear',
+      confirmLabel: 'Hapus Riwayat',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}/message`, { method: 'DELETE' });
+          if (res.ok) setMessages([]);
+        } catch (e) { console.error(e); }
+      },
+    });
   };
 
   const handleStartEdit = (msg) => {
@@ -229,13 +267,19 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
 
   const handleDeleteMessage = async (msgUuid) => {
     setContextMenu(null);
-    if (!confirm('Hapus pesan ini?')) return;
-    try {
-      const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}/message/${msgUuid}`, { method: 'DELETE' });
-      if (res.ok) {
-        setMessages(prev => prev.filter(m => m.uuid !== msgUuid));
-      }
-    } catch (e) { console.error(e); }
+    openConfirm({
+      title: 'Hapus Pesan?',
+      message: 'Pesan ini akan dihapus permanen untuk semua pengguna.',
+      icon: 'message',
+      confirmLabel: 'Hapus Pesan',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/konsultasi/${selectedChat.uuid}/message/${msgUuid}`, { method: 'DELETE' });
+          if (res.ok) setMessages(prev => prev.filter(m => m.uuid !== msgUuid));
+        } catch (e) { console.error(e); }
+      },
+    });
   };
 
   // New Chat Action
@@ -702,10 +746,58 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
       )}
 
       {/* Global Style for scrollbar to make it WhatsApp like */}
+      {/* ─── CUSTOM CONFIRM MODAL ─── */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={closeConfirm}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}
+            style={{ animation: 'scale-in 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            {/* Icon strip */}
+            <div className={`px-6 pt-6 pb-4 flex flex-col items-center text-center`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${
+                confirmModal.icon === 'end'     ? 'bg-orange-100' :
+                confirmModal.icon === 'clear'   ? 'bg-red-100' :
+                confirmModal.icon === 'message' ? 'bg-red-100' :
+                'bg-red-100'
+              }`}>
+                {confirmModal.icon === 'end' ? (
+                  <CheckCircle2 size={28} className="text-orange-500" />
+                ) : confirmModal.icon === 'clear' ? (
+                  <Trash2 size={28} className="text-red-500" />
+                ) : confirmModal.icon === 'message' ? (
+                  <Trash2 size={28} className="text-red-500" />
+                ) : (
+                  <Trash2 size={28} className="text-red-500" />
+                )}
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1.5">{confirmModal.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{confirmModal.message}</p>
+            </div>
+            {/* Divider */}
+            <div className="h-px bg-gray-100 mx-6" />
+            {/* Actions */}
+            <div className="px-6 py-4 flex gap-3">
+              <button
+                onClick={closeConfirm}
+                className="flex-1 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => { const fn = confirmModal.onConfirm; closeConfirm(); fn(); }}
+                className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors ${confirmModal.confirmClass}`}
+              >
+                {confirmModal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style dangerouslySetInnerHTML={{__html: `
         .stylish-scrollbar::-webkit-scrollbar { width: 6px; }
         .stylish-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .stylish-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        @keyframes scale-in { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       `}} />
     </div>
   );

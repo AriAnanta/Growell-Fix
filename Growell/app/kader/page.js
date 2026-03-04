@@ -1,11 +1,11 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   User, Save, RefreshCw, AlertCircle, CheckCircle2, TrendingUp, Users, Calendar,
   Search, Plus, FileText, BarChart3, ChevronDown, LogOut, ArrowRight, Clock,
-  Loader2, Info, ClipboardList, Sparkles, Copy, Check, Link2, Settings2
+  Loader2, Info, ClipboardList, Sparkles, Copy, Check, Link2, Settings2, Pencil, X
 } from 'lucide-react';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import CustomDropdown from '@/components/forms/CustomDropdown';
@@ -21,7 +21,7 @@ function generateLinkCode() {
   return code;
 }
 
-export default function KaderDashboard() {
+function KaderDashboard() {
   const router = useRouter();
   const toast = useToast();
 
@@ -67,6 +67,80 @@ export default function KaderDashboard() {
   // Track whether current prediction has been saved — prevents accidental data loss
   const [dataSaved, setDataSaved] = useState(false);
 
+  // Edit mode — activated when navigating from /data-balita with ?edit=<uuid>
+  const [editMode, setEditMode] = useState(false);
+  const [editBalitaUuid, setEditBalitaUuid] = useState(null);
+  const [editPengukuranUuid, setEditPengukuranUuid] = useState(null);
+  const searchParams = useSearchParams();
+
+  /** Fetch existing balita + latest pengukuran and pre-fill the kader form for edit mode */
+  const fetchAndPreFill = async (uuid) => {
+    try {
+      const [balitaRes, pengRes] = await Promise.all([
+        apiFetch(`/api/balita/${uuid}`),
+        apiFetch(`/api/pengukuran/balita/${uuid}`),
+      ]);
+      if (!balitaRes.ok) return;
+      const balitaData = await balitaRes.json();
+      const b = balitaData.balita;
+
+      let p = null;
+      if (pengRes.ok) {
+        const pengData = await pengRes.json();
+        p = pengData.measurements?.[0] || null;
+        if (p?.uuid) setEditPengukuranUuid(p.uuid);
+      }
+
+      const tglLahir = b.tanggal_lahir ? b.tanggal_lahir.split('T')[0] : '';
+      const tglPengukuran = p?.tanggal_pengukuran ? p.tanggal_pengukuran.split('T')[0] : '';
+
+      // Auto-calculate usia bulan
+      let usiaBulan = '';
+      if (tglLahir && tglPengukuran) {
+        const months = Math.floor((new Date(tglPengukuran) - new Date(tglLahir)) / (1000 * 60 * 60 * 24 * 30.44));
+        if (months >= 0) usiaBulan = months.toString();
+      }
+
+      // Normalize jenis_kelamin: DB stores 'Laki-Laki' but form uses 'Laki-laki'
+      const normalizeJk = (v) => {
+        if (!v) return '';
+        const l = v.toLowerCase().trim();
+        if (l.startsWith('l')) return 'Laki-laki';
+        if (l.startsWith('p')) return 'Perempuan';
+        return v;
+      };
+
+      // usiaKehamilan is stored in survey_balita.usia_kehamilan_lahir
+      const survey = balitaData.latestSurvey;
+      const usiaKehamilan = survey?.usia_kehamilan_lahir != null ? String(survey.usia_kehamilan_lahir) : '';
+
+      setFormData({
+        namaKelurahan:    b.kelurahan || '',
+        namaPosyandu:     b.nama_posyandu || b.posyandu_nama || '',
+        namaBalita:       b.nama || '',
+        namaIbu:          b.nama_ibu || '',
+        tanggalLahir:     tglLahir,
+        jenisKelamin:     normalizeJk(b.jenis_kelamin),
+        beratLahir:       b.berat_lahir != null ? String(b.berat_lahir) : '',
+        tinggiLahir:      b.panjang_lahir != null ? String(b.panjang_lahir) : '',
+        tanggalPengukuran: tglPengukuran,
+        beratBadan:       p?.berat_badan != null ? String(p.berat_badan) : '',
+        tinggiBadan:      p?.tinggi_badan != null ? String(p.tinggi_badan) : '',
+        lingkarKepala:    p?.lingkar_kepala != null ? String(p.lingkar_kepala) : '',
+        lila:             p?.lingkar_lengan != null ? String(p.lingkar_lengan) : '',
+        kondisiBeratBadan: p?.kondisi_bb_bulan_lalu || '',
+        usiaKehamilan,
+        usiaBulan,
+        rekomendasiGizi:  p?.catatan || '',
+        statusTBU:        p?.status_gizi_tbu || '',
+        statusBBTB:       p?.status_gizi_bbtb || '',
+        statusBBU:        p?.status_gizi_bbu || '',
+      });
+    } catch (e) {
+      console.error('fetchAndPreFill error:', e);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return; }
     const u = getUserData();
@@ -81,6 +155,14 @@ export default function KaderDashboard() {
     setUserData(u);
     fetchDashboardStats();
     fetchRecentData();
+    // Detect edit mode from URL param
+    const editUuid = searchParams.get('edit');
+    if (editUuid) {
+      setEditMode(true);
+      setEditBalitaUuid(editUuid);
+      setActiveTab('input');
+      fetchAndPreFill(editUuid);
+    }
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -480,6 +562,10 @@ export default function KaderDashboard() {
     setLinkCode('');
     setCodeCopied(false);
     setDataSaved(false);
+    // Clear edit mode
+    setEditMode(false);
+    setEditBalitaUuid(null);
+    setEditPengukuranUuid(null);
   };
 
   const handleCopyCode = (code) => {
@@ -503,6 +589,69 @@ export default function KaderDashboard() {
   const handleSaveData = async () => {
     if (!predictionResult || isSaving) return;
     setIsSaving(true);
+
+    // ── Edit Mode: update existing records ────────────────────────
+    if (editMode && editBalitaUuid) {
+      try {
+        // 1. Update balita identitas
+        const balitaPayload = {
+          nama:          formData.namaBalita,
+          nama_ibu:      formData.namaIbu || null,
+          tanggal_lahir: formData.tanggalLahir,
+          jenis_kelamin: formData.jenisKelamin,
+          berat_lahir:   toNumber(formData.beratLahir),
+          panjang_lahir: toNumber(formData.tinggiLahir),
+          kelurahan:     formData.namaKelurahan || null,
+          nama_posyandu: formData.namaPosyandu || null,
+        };
+        const balitaRes = await apiFetch(`/api/balita/${editBalitaUuid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(balitaPayload),
+        });
+        if (!balitaRes.ok) {
+          const err = await balitaRes.json().catch(() => ({}));
+          throw new Error(err.error || 'Gagal memperbarui data balita');
+        }
+
+        // 2. Update pengukuran + simpan hasil prediksi
+        if (editPengukuranUuid) {
+          const pengPayload = {
+            tanggal_pengukuran:   formData.tanggalPengukuran,
+            berat_badan:          toNumber(formData.beratBadan),
+            tinggi_badan:         toNumber(formData.tinggiBadan),
+            lingkar_kepala:       toNumber(formData.lingkarKepala) ?? null,
+            lingkar_lengan:       toNumber(formData.lila) ?? null,
+            kondisi_bb_bulan_lalu: formData.kondisiBeratBadan || null,
+            catatan:              formData.rekomendasiGizi || null,
+            // Save prediction results directly (bypasses reset in the PUT route)
+            status_gizi_bbu:      predictionResult.bbu || null,
+            status_gizi_tbu:      predictionResult.tbu || null,
+            status_gizi_bbtb:     predictionResult.bbtb || null,
+            rekomendasi_utama:    rekomendasiResult?.rekomendasi_utama || null,
+            rekomendasi_tambahan: rekomendasiResult
+              ? [rekomendasiResult.rekomendasi_utama, ...(rekomendasiResult.rekomendasi_tambahan || [])].filter(Boolean)
+              : null,
+          };
+          await apiFetch(`/api/pengukuran/${editPengukuranUuid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pengPayload),
+          });
+        }
+
+        setDataSaved(true);
+        setShowSuccessModal(true);
+        toast.success('Data Berhasil Diperbarui!', `Data ${formData.namaBalita || 'balita'} telah diperbarui.`);
+      } catch (err) {
+        toast.error('Gagal Memperbarui', err.message);
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // ── Normal Mode: create new records ───────────────────────────
     try {
       const res = await apiFetch('/api/pengukuran/simpan', {
         method: 'POST',
@@ -551,7 +700,16 @@ export default function KaderDashboard() {
       setIsSaving(false);
     }
   };
-  const handleCloseModal = () => { setShowSuccessModal(false); handleReset(); setActiveTab('input'); };
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    if (editMode) {
+      // After editing, go back to the data list
+      router.push('/data-balita');
+    } else {
+      handleReset();
+      setActiveTab('input');
+    }
+  };
   const filteredRecent = recentData.filter(d => !searchRecent || (d.nama_balita || d.nama || '').toLowerCase().includes(searchRecent.toLowerCase()));
 
   const getStatusColor = (status) => {
@@ -684,6 +842,30 @@ export default function KaderDashboard() {
               <div className="p-5 sm:p-8">
                 {activeTab === 'input' && (
                   <div className="space-y-7">
+
+                    {/* ─── Edit Mode Banner ─── */}
+                    {editMode && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <Pencil size={15} className="text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-amber-900">Mode Edit Data</p>
+                            <p className="text-xs text-amber-600 mt-0.5">
+                              Mengubah data: <span className="font-semibold">{formData.namaBalita || '…'}</span>
+                              {!editPengukuranUuid && <span className="ml-2 text-amber-500 italic">(belum ada data pengukuran)</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => { handleReset(); router.push('/data-balita'); }}
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors flex-shrink-0"
+                        >
+                          <X size={12} /> Batal Edit
+                        </button>
+                      </div>
+                    )}
 
                     {/* ─── Section 1: Identitas Balita ─── */}
                     <div>
@@ -959,15 +1141,16 @@ export default function KaderDashboard() {
 
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button onClick={handleSaveData} disabled={isSaving || dataSaved} className="flex-1 py-3.5 bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all hover:shadow-lg hover:shadow-teal-500/25 flex items-center justify-center gap-2 disabled:opacity-60">
-                        {isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : dataSaved ? <><CheckCircle2 size={16} /> Tersimpan</> : <><Save size={16} /> Simpan Data</>}
+                        {isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : dataSaved ? <><CheckCircle2 size={16} /> Tersimpan</> : editMode ? <><Save size={16} /> Update Data</> : <><Save size={16} /> Simpan Data</>}
                       </button>
                       <button
                         onClick={() => {
                           if (!dataSaved && predictionResult && !window.confirm('Data prediksi belum disimpan. Lanjutkan tanpa menyimpan?')) return;
-                          handleReset(); setActiveTab('input');
+                          if (editMode) { handleReset(); router.push('/data-balita'); }
+                          else { handleReset(); setActiveTab('input'); }
                         }}
                         className="flex-1 py-3.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                      ><Plus size={16} /> Input Anak Berikutnya</button>
+                      >{editMode ? <><ArrowRight size={16} /> Kembali ke Daftar</> : <><Plus size={16} /> Input Anak Berikutnya</>}</button>
                     </div>
                   </div>
                 )}
@@ -1067,5 +1250,13 @@ export default function KaderDashboard() {
 
       <SuccessModal isOpen={showSuccessModal} onClose={handleCloseModal} onViewAll={() => { setShowSuccessModal(false); router.push('/data-balita'); }} title="Data Berhasil Disimpan!" message="Data pertumbuhan anak telah berhasil direkam ke dalam sistem." />
     </div>
+  );
+}
+
+export default function KaderDashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>}>
+      <KaderDashboard />
+    </Suspense>
   );
 }
