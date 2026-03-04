@@ -51,15 +51,6 @@ async function seed() {
         [u.id, JSON.stringify([])]
       );
     }
-    console.log('  ✅ Onboarding entries seeded');
-
-    console.log('\n✅ Seeding completed!');
-    console.log('\n📋 Demo Login Credentials:');
-    console.log('  Puskesmas  : puskesmas@growell.id / password123');
-    console.log('  Kelurahan  : kelurahan@growell.id / password123');
-    console.log('  Kader      : kader@growell.id / password123');
-    console.log('  Orang Tua  : orangtua@growell.id / password123');
-    console.log('  Ahli Gizi  : ahligizi@growell.id / password123');
 
     await pool.end();
     process.exit(0);

@@ -21,6 +21,7 @@ COPY rekomendasi_intervensi.py .
 COPY *.joblib ./
 COPY models/ ./models/
 COPY models_enhanced_final/ ./models_enhanced_final/
+COPY models_step11_ta2/ ./models_step11_ta2/
 COPY .env .
 
 EXPOSE 8000
