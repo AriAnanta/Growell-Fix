@@ -77,6 +77,25 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{status}</span>;
 }
 
+// ─── Indicator Chips (posyandu table) ────────────────────────
+function IndicatorChips({ items }) {
+  const visible = items.filter(x => Number(x.count) > 0);
+  if (visible.length === 0) return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Baik
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap gap-1">
+      {visible.map((x, j) => (
+        <span key={j} className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${x.cls}`}>
+          {x.label} {x.count}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ─── Alert Banner Component ────────────────────────
 function AlertBanner({ type, icon: Icon, title, description, count, onClick }) {
   const styles = {
@@ -382,7 +401,7 @@ export default function KelurahanDashboard() {
         {/* ─── Charts Row 1: Status Gizi (3 charts) ─── */}
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mb-6 section-appear section-appear-delay-1">
           {/* Wasting (BB/TB) */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Status Gizi BB/TB</h3>
@@ -411,7 +430,7 @@ export default function KelurahanDashboard() {
           </div>
 
           {/* Stunting (TB/U) */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Status Gizi TB/U</h3>
@@ -439,8 +458,8 @@ export default function KelurahanDashboard() {
             )}
           </div>
 
-          {/* Underweight (BB/U) — NEW! */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          {/* Underweight (BB/U) */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Status Gizi BB/U</h3>
@@ -472,7 +491,7 @@ export default function KelurahanDashboard() {
         {/* ─── Charts Row 2: Trend + Gender + Age ─── */}
         <div className="grid lg:grid-cols-5 gap-4 sm:gap-5 mb-6 section-appear section-appear-delay-2">
           {/* Monthly Trend */}
-          <div className="lg:col-span-3 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Tren Pengukuran Bulanan</h3>
@@ -496,7 +515,7 @@ export default function KelurahanDashboard() {
           </div>
 
           {/* Gender Distribution */}
-          <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Jenis Kelamin</h3>
@@ -531,7 +550,7 @@ export default function KelurahanDashboard() {
         {/* ─── Row 3: Risk by Age + Posyandu + Rekomendasi ─── */}
         <div className="grid lg:grid-cols-5 gap-4 sm:gap-5 mb-6 section-appear section-appear-delay-3">
           {/* Per-Posyandu Table */}
-          <div className="lg:col-span-3 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Ringkasan per Posyandu</h3>
@@ -558,25 +577,6 @@ export default function KelurahanDashboard() {
                         ? ((Number(p.berisiko_any || 0) / p.total_balita) * 100).toFixed(0)
                         : 0;
                       const isHighRisk = Number(riskPct) > 20;
-
-                      // helper: render mini chip clusters for one indicator
-                      const IndicatorChips = ({ items }) => {
-                        const visible = items.filter(x => Number(x.count) > 0);
-                        if (visible.length === 0) return (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Baik
-                          </span>
-                        );
-                        return (
-                          <div className="flex flex-wrap gap-1">
-                            {visible.map((x, j) => (
-                              <span key={j} className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${x.cls}`}>
-                                {x.label} {x.count}
-                              </span>
-                            ))}
-                          </div>
-                        );
-                      };
 
                       return (
                         <tr key={i} className={`border-b border-gray-50 transition ${isHighRisk ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50/50'}`}>
@@ -630,8 +630,8 @@ export default function KelurahanDashboard() {
             )}
           </div>
 
-          {/* Risk by Age Group — NEW! */}
-          <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          {/* Risk by Age Group */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Risiko per Kelompok Usia</h3>
@@ -672,7 +672,7 @@ export default function KelurahanDashboard() {
         {/* ─── Row 4: Age Distribution + Top Rekomendasi ─── */}
         <div className="grid lg:grid-cols-5 gap-4 sm:gap-5 mb-6 section-appear section-appear-delay-3">
           {/* Age Distribution */}
-          <div className="lg:col-span-3 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Distribusi Usia</h3>
@@ -691,7 +691,7 @@ export default function KelurahanDashboard() {
           </div>
 
           {/* Top Rekomendasi */}
-          <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-500">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Top Rekomendasi Intervensi</h3>
@@ -726,7 +726,7 @@ export default function KelurahanDashboard() {
         </div>
 
         {/* ─── Urgent Cases Table ─── */}
-        <div ref={urgentRef} className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 p-6 mb-8 section-appear section-appear-delay-4 hover:shadow-lg transition-all duration-500">
+        <div ref={urgentRef} className="bg-white rounded-2xl border border-gray-100 p-6 mb-8 section-appear section-appear-delay-4 hover:shadow-lg transition-all duration-500">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
