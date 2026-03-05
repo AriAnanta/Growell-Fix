@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { clearAuth, getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 // ─── Mini Bar Chart (pure CSS) ─────────────────────
 function MiniBar({ data, colors, maxVal }) {
@@ -173,8 +174,7 @@ export default function KelurahanDashboard() {
         <div className="absolute -bottom-40 right-1/4 w-80 h-80 bg-sky-400/[0.03] rounded-full blur-[100px] animate-float-slow" />
       </div>
       {/* ─── Header ─── */}
-      <div className="sticky top-0 z-40 bg-[#fafafa] px-3 sm:px-4 pt-3 pb-2">
-        <header className="max-w-[1400px] mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-6 h-14 flex justify-between items-center">
+      <AppNavbar maxWidth="max-w-[1400px]">
           <Link href="/" className="flex items-center gap-2.5 group hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm group-hover:shadow-violet-200 transition-shadow duration-300">
               <img src="/growell-logo.png" alt="Growell" className="w-full h-full object-cover" />
@@ -208,11 +208,7 @@ export default function KelurahanDashboard() {
               )}
             </div>
           </div>
-        </header>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-      </div>
+      </AppNavbar>
 
       {/* ─── Hero Section ─── */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">

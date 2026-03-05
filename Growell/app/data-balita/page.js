@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { ArrowLeft, Search, Users, CheckCircle2, AlertCircle, Pencil, Trash2, Loader2 } from 'lucide-react';
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import { apiFetch, isAuthenticated } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 export default function ListDataBalita() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [dataBalita, setDataBalita] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,15 +22,28 @@ export default function ListDataBalita() {
   const [deleteTarget, setDeleteTarget] = useState(null); // { uuid, nama }
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Debounce search input → searchTerm (300 ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearchTerm(searchInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Reset page to 1 when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [filterStatus]);
+
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return; }
     fetchDashStats();
-    fetchBalita();
   }, []);
 
   useEffect(() => {
     fetchBalita();
-  }, [page, searchTerm]);
+  }, [page, searchTerm, filterStatus]);
 
   const fetchDashStats = async () => {
     try {
@@ -49,6 +64,7 @@ export default function ListDataBalita() {
     try {
       const params = new URLSearchParams({ page: page.toString(), limit: '15' });
       if (searchTerm) params.set('search', searchTerm);
+      if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus);
       const res = await apiFetch(`/api/balita?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -89,11 +105,9 @@ export default function ListDataBalita() {
     (d.status_gizi_tbu  && !isNormalTbu(d.status_gizi_tbu))
   );
 
-  const filteredData = dataBalita.filter(item => {
-    if (filterStatus === 'normal') return isAllNormal(item);
-    if (filterStatus === 'risiko') return hasAnyRisiko(item);
-    return true;
-  });
+  // Filtering is now handled server-side via the `status` query param.
+  // Keep a local pass-through so the table variable name stays the same.
+  const filteredData = dataBalita;
 
   // Palet warna berdasarkan label status gizi
   const GIZI_COLOR = {
@@ -141,8 +155,7 @@ export default function ListDataBalita() {
         <div className="absolute bottom-0 -left-32 w-96 h-96 bg-sky-400/[0.03] rounded-full blur-[120px] animate-float-slow-reverse" />
       </div>
       {/* Minimal Nav */}
-      <div className="sticky top-0 z-40 bg-gray-50 px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-7xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-5 h-14 flex items-center justify-between">
+      <AppNavbar>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/kader')} className="p-2 -ml-1 hover:bg-gray-100 rounded-xl transition-colors">
               <ArrowLeft size={18} className="text-gray-500" />
@@ -155,11 +168,7 @@ export default function ListDataBalita() {
               <span className="text-base font-bold text-gray-900 tracking-tight hidden sm:block">Data Balita</span>
             </Link>
           </div>
-        </nav>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-      </div>
+      </AppNavbar>
 
       {/* Stats Row */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 section-appear section-appear-delay-1">
@@ -191,8 +200,8 @@ export default function ListDataBalita() {
                 <input
                   type="text"
                   placeholder="Cari nama balita..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-900 focus:bg-white focus:ring-0 outline-none transition-all text-sm text-gray-900 placeholder:text-gray-400"
                 />
               </div>
@@ -281,29 +290,62 @@ export default function ListDataBalita() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
-                Halaman <span className="font-medium text-gray-900">{page}</span> dari <span className="font-medium text-gray-900">{totalPages}</span>
-              </p>
-              <div className="flex gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Selanjutnya
-                </button>
+          {totalPages > 1 && (() => {
+            // Build page number list with ellipsis: always show first, last, current ±2
+            const delta = 2;
+            const range = [];
+            for (let i = Math.max(2, page - delta); i <= Math.min(totalPages - 1, page + delta); i++) range.push(i);
+            if (page - delta > 2) range.unshift('...');
+            if (page + delta < totalPages - 1) range.push('...');
+            range.unshift(1);
+            if (totalPages > 1) range.push(totalPages);
+
+            return (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500 order-2 sm:order-1">
+                  Halaman <span className="font-medium text-gray-900">{page}</span> dari <span className="font-medium text-gray-900">{totalPages}</span>
+                </p>
+                <div className="flex items-center gap-1 order-1 sm:order-2 flex-wrap justify-center">
+                  {/* Prev */}
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Page numbers */}
+                  {range.map((p_, i) =>
+                    p_ === '...' ? (
+                      <span key={`ellipsis-${i}`} className="px-2 py-2 text-sm text-gray-400 select-none">…</span>
+                    ) : (
+                      <button
+                        key={p_}
+                        onClick={() => setPage(p_)}
+                        className={`min-w-[36px] px-2.5 py-2 text-sm font-medium rounded-lg transition-colors border ${
+                          p_ === page
+                            ? 'bg-gray-900 text-white border-gray-900'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {p_}
+                      </button>
+                    )
+                  )}
+
+                  {/* Next */}
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </section>
 

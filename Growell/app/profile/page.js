@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Edit2, Mail, Phone, MapPin, Shield } from 'lucide-react';
 import { getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -65,8 +66,7 @@ export default function ProfilePage() {
         <div className="absolute bottom-20 -left-32 w-96 h-96 bg-sky-400/[0.03] rounded-full blur-[100px] animate-float-slow-reverse" />
       </div>
       {/* Navbar */}
-      <div className="sticky top-0 z-40 bg-gray-50/80 backdrop-blur-md px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-4xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-5 h-14 flex items-center justify-between">
+      <AppNavbar maxWidth="max-w-4xl">
           <div className="flex items-center gap-3">
             <button onClick={() => router.back()} className="p-2 -ml-1 hover:bg-gray-100 rounded-xl transition-colors text-gray-500">
               <ArrowLeft size={18} />
@@ -91,8 +91,7 @@ export default function ProfilePage() {
               <Edit2 size={14} /><span className="hidden sm:inline">Edit Profil</span>
             </button>
           )}
-        </nav>
-      </div>
+      </AppNavbar>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 

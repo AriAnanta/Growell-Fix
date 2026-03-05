@@ -14,6 +14,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 20;
     const search = searchParams.get('search');
     const posyandu_id = searchParams.get('posyandu_id');
+    const status = searchParams.get('status'); // 'normal' | 'risiko'
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE b.is_active = TRUE';
@@ -37,14 +38,39 @@ export async function GET(request) {
       params.push(posyandu_id);
     }
 
+    // Status filter — applied against the latest measurement join
+    let statusClause = '';
+    if (status === 'normal') {
+      statusClause = `AND latest.status_gizi_bbu = 'Berat Badan Normal'
+        AND latest.status_gizi_bbtb = 'Gizi Baik'
+        AND latest.status_gizi_tbu = 'Normal'`;
+    } else if (status === 'risiko') {
+      statusClause = `AND (
+        (latest.status_gizi_bbu  IS NOT NULL AND latest.status_gizi_bbu  != 'Berat Badan Normal') OR
+        (latest.status_gizi_bbtb IS NOT NULL AND latest.status_gizi_bbtb != 'Gizi Baik') OR
+        (latest.status_gizi_tbu  IS NOT NULL AND latest.status_gizi_tbu  != 'Normal')
+      )`;
+    }
+
+    // Subquery used by both COUNT and SELECT so the status filter is applied consistently
+    const latestJoin = `LEFT JOIN (
+        SELECT pk.*, ROW_NUMBER() OVER (PARTITION BY pk.balita_id ORDER BY pk.tanggal_pengukuran DESC) as rn
+        FROM pengukuran pk
+      ) latest ON latest.balita_id = b.id AND latest.rn = 1`;
+
     const sort = searchParams.get('sort');
     const orderBy = sort === 'recent'
       ? 'ORDER BY latest.tanggal_pengukuran DESC'
       : 'ORDER BY b.nama ASC';
 
-    // Total count
+    // Total count (includes status filter so pagination is accurate)
     const [countResult] = await pool.query(
-      `SELECT COUNT(*) as total FROM balita b ${whereClause}`, params
+      `SELECT COUNT(*) as total
+       FROM balita b
+       ${latestJoin}
+       ${whereClause}
+       ${statusClause}`,
+      params
     );
 
     // Balita list with latest measurement
@@ -59,11 +85,9 @@ export async function GET(request) {
       FROM balita b
       LEFT JOIN posyandu p ON b.posyandu_id = p.id
       LEFT JOIN users u ON b.orang_tua_id = u.id
-      LEFT JOIN (
-        SELECT pk.*, ROW_NUMBER() OVER (PARTITION BY pk.balita_id ORDER BY pk.tanggal_pengukuran DESC) as rn
-        FROM pengukuran pk
-      ) latest ON latest.balita_id = b.id AND latest.rn = 1
+      ${latestJoin}
       ${whereClause}
+      ${statusClause}
       ${orderBy}
       LIMIT ? OFFSET ?`,
       [...params, limit, offset]

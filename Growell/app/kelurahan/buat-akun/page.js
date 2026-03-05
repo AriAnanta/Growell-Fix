@@ -7,6 +7,7 @@ import {
   Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, Trash2, Key
 } from 'lucide-react';
 import { apiFetch, isAuthenticated, getUserData } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 const ROLE_OPTIONS = [
   { value: 'kader', label: 'Kader Posyandu', desc: 'Input data balita & prediksi status gizi', color: 'teal' },
@@ -96,8 +97,7 @@ export default function BuatAkunPage() {
         <div className="absolute top-1/2 -left-40 w-[500px] h-[500px] bg-sky-400/[0.03] rounded-full blur-[120px] animate-float-slow-reverse" />
       </div>
       {/* Floating Pill Navbar */}
-      <div className="sticky top-0 z-40 bg-gray-50 px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-7xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-5 h-14 flex items-center justify-between">
+      <AppNavbar>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/kelurahan')} className="p-2 -ml-1 hover:bg-gray-100 rounded-xl transition-colors">
               <ArrowLeft size={18} className="text-gray-500" />
@@ -113,8 +113,7 @@ export default function BuatAkunPage() {
             </Link>
           </div>
           <span className="text-xs font-medium text-gray-400 hidden sm:block">Kader &amp; Ahli Gizi</span>
-        </nav>
-      </div>
+      </AppNavbar>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">

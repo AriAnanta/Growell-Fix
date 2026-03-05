@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Download, Calendar, Loader2, CheckCircle2, AlertCi
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import { apiFetch, isAuthenticated, getUserData } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 export default function LaporanPage() {
   const router = useRouter();
@@ -74,8 +75,7 @@ export default function LaporanPage() {
         <div className="absolute top-1/2 -left-32 w-80 h-80 bg-sky-400/[0.03] rounded-full blur-[100px] animate-float-slow-reverse" />
       </div>
       {/* Minimal Nav */}
-      <div className="sticky top-0 z-40 bg-gray-50 px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-7xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-5 h-14 flex items-center justify-between">
+      <AppNavbar>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/kader')} className="p-2 -ml-1 hover:bg-gray-100 rounded-xl transition-colors">
               <ArrowLeft size={18} className="text-gray-500" />
@@ -88,11 +88,7 @@ export default function LaporanPage() {
               <span className="text-base font-bold text-gray-900 tracking-tight hidden sm:block">Laporan</span>
             </Link>
           </div>
-        </nav>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-      </div>
+      </AppNavbar>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-16">
         <div className="grid lg:grid-cols-3 gap-6">

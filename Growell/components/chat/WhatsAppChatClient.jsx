@@ -44,6 +44,7 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
   const headerMenuRef = useRef(null);
   const contextMenuRef = useRef(null);
   const inputRef = useRef(null);
+  const pointerStartY = useRef(0);
 
   // Close context menus on outside click
   useEffect(() => {
@@ -346,7 +347,7 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
   });
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
+    <div className="flex bg-gray-100 overflow-hidden font-sans" style={{ height: '100dvh' }}>
       
       {/* ─── LEFT PANEL (SIDEBAR) ─── */}
       <div className={`w-full md:w-[360px] lg:w-[400px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col relative ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
@@ -426,8 +427,9 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
               return (
                 <div
                   key={c.uuid}
-                  onClick={() => handleSelectChat(c)}
-                  className={`w-full text-left flex items-start px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100 group ${isSelected ? 'bg-teal-50' : 'bg-white'}`}
+                  onPointerDown={(e) => { pointerStartY.current = e.clientY; }}
+                  onPointerUp={(e) => { if (Math.abs(e.clientY - pointerStartY.current) < 8) handleSelectChat(c); }}
+                  className={`w-full text-left flex items-start px-4 py-3 cursor-pointer hover:bg-gray-50 active:bg-gray-50 transition-colors border-b border-gray-100 group ${isSelected ? 'bg-teal-50' : 'bg-white'}`}
                 >
                   <div className="relative flex-shrink-0 mr-3 mt-1">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${userData?.role === 'orang_tua' ? 'bg-gradient-to-br from-indigo-500 to-cyan-500' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
@@ -501,7 +503,7 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
             {/* Chat Header */}
             <div className="h-16 px-4 sm:px-6 bg-white border-b border-gray-200 flex items-center justify-between z-30 shadow-sm relative flex-shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <button onClick={() => { setSelectedChat(null); window.history.pushState({}, '', '/konsultasi'); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full flex-shrink-0">
+                <button onClick={() => { if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; } setSelectedChat(null); window.history.pushState({}, '', '/konsultasi'); }} className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full flex-shrink-0">
                   <ArrowLeft size={20} />
                 </button>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0 ${userData?.role === 'orang_tua' ? 'bg-gradient-to-br from-indigo-500 to-cyan-500' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
@@ -640,7 +642,7 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
 
             {/* Message Input Form */}
             {['aktif', 'menunggu'].includes(selectedChat.status) ? (
-              <div className="bg-[#f0f2f5] px-4 py-3 z-30 flex-shrink-0">
+              <div className="bg-[#f0f2f5] px-4 py-3 z-30 flex-shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
                 {/* Edit mode indicator */}
                 {editingMsg && (
                   <div className="flex items-center justify-between bg-teal-50 border-l-4 border-teal-500 px-3 py-1.5 rounded-r-lg mb-2 text-sm">

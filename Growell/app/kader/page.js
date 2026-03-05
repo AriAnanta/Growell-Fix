@@ -12,6 +12,7 @@ import CustomDropdown from '@/components/forms/CustomDropdown';
 import SuccessModal from '@/components/common/SuccessModal';
 import { useToast } from '@/components/common/Toast';
 import { clearAuth, getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 // Generate a 6-character alphanumeric link code
 function generateLinkCode() {
@@ -735,8 +736,7 @@ function KaderDashboard() {
       </div>
 
       {/* ─── Header ─── */}
-      <div className="sticky top-0 z-40 bg-[#fafafa] px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-7xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-6 h-14 flex items-center justify-between">
+      <AppNavbar>
           <Link href="/" className="flex items-center gap-2.5 group hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm group-hover:shadow-teal-200 transition-shadow duration-300">
               <img src="/growell-logo.png" alt="Growell" className="w-full h-full object-cover" />
@@ -761,8 +761,7 @@ function KaderDashboard() {
               </div>
             )}
           </div>
-        </nav>
-      </div>
+      </AppNavbar>
 
 
       {/* ─── Stats ─── */}
@@ -914,15 +913,6 @@ function KaderDashboard() {
                             className={`${inputClass} ${formErrors.namaIbu ? '!border-red-400 !bg-red-50' : ''}`}
                             placeholder="Tulis nama lengkap orang tua" />
                           {formErrors.namaIbu ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Nama lengkap, digunakan untuk pencocokan data</p>}
-                        </div>
-
-                        {/* 5. Umur Balita — auto-calc, read-only */}
-                        <div id="field-usiaBulan">
-                          <label className="block text-sm font-medium text-gray-600 mb-1.5">5. Umur Balita saat ini (bulan)</label>
-                          <input type="number" name="usiaBulan" value={formData.usiaBulan}
-                            className={`${inputClass} bg-gray-100 cursor-not-allowed`}
-                            placeholder="Terisi otomatis dari tanggal lahir" readOnly />
-                          <p className="text-xs text-gray-400 mt-1 italic">Terisi otomatis setelah mengisi tanggal lahir & tanggal pengukuran. Contoh: 16</p>
                         </div>
 
                         {/* 6. Tanggal Lahir */}

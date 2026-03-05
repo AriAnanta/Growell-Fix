@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ClipboardList, MessageCircle, LogOut, User, ChevronDown, Utensils, HeartPulse, Baby } from 'lucide-react';
 import { isAuthenticated, getUserData, clearAuth } from '@/utils/auth';
+import AppNavbar from '@/components/common/AppNavbar';
 
 export default function OrangTuaDashboard() {
   const router = useRouter();
@@ -42,8 +43,7 @@ export default function OrangTuaDashboard() {
         <div className="absolute -bottom-32 right-1/3 w-72 h-72 bg-emerald-400/[0.03] rounded-full blur-[100px] animate-float-slow" />
       </div>
       {/* Floating Pill Navbar */}
-      <div className="sticky top-0 z-40 bg-gray-50 px-3 sm:px-4 pt-3 pb-2">
-        <nav className="max-w-5xl mx-auto rounded-2xl bg-white/95 backdrop-blur-xl shadow-lg shadow-black/[0.05] border border-gray-100 px-4 sm:px-5 h-14 flex items-center justify-between">
+      <AppNavbar maxWidth="max-w-5xl">
           <Link href="/" className="flex items-center gap-2.5 group hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm group-hover:shadow-teal-200 transition-shadow duration-300">
               <img src="/growell-logo.png" alt="Growell" className="w-full h-full object-cover" />
@@ -77,8 +77,7 @@ export default function OrangTuaDashboard() {
               </div>
             )}
           </div>
-        </nav>
-      </div>
+      </AppNavbar>
 
       {/* Main Content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">

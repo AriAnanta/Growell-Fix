@@ -130,11 +130,7 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
 
       {/* â”€â”€ Popup â”€â”€ */}
       {isOpen && (
-        <>
-          {/* mobile backdrop */}
-          <div className="fixed inset-0 bg-black/30 z-[9998] sm:hidden" onClick={handleClose} />
-
-          <div className="fixed sm:absolute bottom-0 sm:bottom-auto left-0 sm:left-auto right-0 sm:right-auto sm:mt-1.5 sm:top-full z-[9999] bg-white rounded-t-2xl sm:rounded-xl shadow-xl border border-gray-200 w-full sm:w-[310px]">
+          <div className="absolute top-full left-0 mt-1.5 z-[9999] bg-white rounded-xl shadow-xl border border-gray-200 w-[310px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto">
 
             {/* â•â•â•â• YEAR PICKER â•â•â•â• */}
             {pickerMode === 'year' && (
@@ -329,7 +325,6 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
             )}
 
           </div>
-        </>
       )}
     </div>
   );
