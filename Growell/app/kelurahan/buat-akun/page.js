@@ -231,7 +231,7 @@ export default function BuatAkunPage() {
           </div>
           <button
             onClick={() => setShowCreateForm(v => !v)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex-shrink-0 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all self-start sm:self-auto flex-shrink-0 ${
               showCreateForm
                 ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 : 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-sm hover:shadow-lg hover:shadow-teal-500/25 hover:opacity-90'
@@ -241,37 +241,37 @@ export default function BuatAkunPage() {
         </div>
 
         {/* ── Stats Summary Cards ── */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 stagger-grid">
-          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:shadow-xl hover:shadow-teal-100/40 transition-all duration-500 hover:-translate-y-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20 flex-shrink-0">
-                <Users size={18} className="text-white" />
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 stagger-grid">
+          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-3 sm:p-5 hover:shadow-xl hover:shadow-teal-100/40 transition-all duration-500 hover:-translate-y-1">
+            <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20 flex-shrink-0">
+                <Users size={15} className="text-white" />
               </div>
               <div>
-                <p className="text-xl sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{accounts.length}</p>
-                <p className="text-[11px] sm:text-xs text-gray-500 font-medium">Total Akun</p>
+                <p className="text-lg sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{accounts.length}</p>
+                <p className="text-[9px] sm:text-xs text-gray-500 font-medium leading-tight">Total Akun</p>
               </div>
             </div>
           </div>
-          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:shadow-xl hover:shadow-teal-100/40 transition-all duration-500 hover:-translate-y-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-md shadow-teal-400/20 flex-shrink-0">
-                <Shield size={18} className="text-white" />
+          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-3 sm:p-5 hover:shadow-xl hover:shadow-teal-100/40 transition-all duration-500 hover:-translate-y-1">
+            <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-md shadow-teal-400/20 flex-shrink-0">
+                <Shield size={15} className="text-white" />
               </div>
               <div>
-                <p className="text-xl sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{kaderCount}</p>
-                <p className="text-[11px] sm:text-xs text-gray-500 font-medium">Kader</p>
+                <p className="text-lg sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{kaderCount}</p>
+                <p className="text-[9px] sm:text-xs text-gray-500 font-medium leading-tight">Kader</p>
               </div>
             </div>
           </div>
-          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:shadow-xl hover:shadow-emerald-100/40 transition-all duration-500 hover:-translate-y-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md shadow-emerald-400/20 flex-shrink-0">
-                <Stethoscope size={18} className="text-white" />
+          <div className="stat-card card-shine bg-white rounded-2xl border border-gray-100 p-3 sm:p-5 hover:shadow-xl hover:shadow-emerald-100/40 transition-all duration-500 hover:-translate-y-1">
+            <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md shadow-emerald-400/20 flex-shrink-0">
+                <Stethoscope size={15} className="text-white" />
               </div>
               <div>
-                <p className="text-xl sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{ahliGiziCount}</p>
-                <p className="text-[11px] sm:text-xs text-gray-500 font-medium">Ahli Gizi</p>
+                <p className="text-lg sm:text-2xl font-extrabold text-gray-900 tabular-nums count-up">{ahliGiziCount}</p>
+                <p className="text-[9px] sm:text-xs text-gray-500 font-medium leading-tight">Ahli Gizi</p>
               </div>
             </div>
           </div>
@@ -311,7 +311,7 @@ export default function BuatAkunPage() {
                     {/* LEFT: Role selector */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Role Petugas *</label>
-                      <div className="grid grid-cols-2 gap-3 h-[calc(100%-28px)]">
+                      <div className="grid grid-cols-2 gap-3 md:h-[calc(100%-28px)]">
                         {ROLE_OPTIONS.map(opt => {
                           const Icon = opt.icon;
                           const isActive = form.role === opt.value;
@@ -320,18 +320,18 @@ export default function BuatAkunPage() {
                               key={opt.value}
                               type="button"
                               onClick={() => { setForm({ ...form, role: opt.value }); setErrorMsg(''); }}
-                              className={`group flex flex-col items-center justify-center p-5 rounded-xl border-2 text-center transition-all duration-300 ${
+                              className={`group flex flex-col items-center justify-center p-3 sm:p-5 rounded-xl border-2 text-center transition-all duration-300 ${
                                 isActive
                                   ? `${opt.activeBorder} ${opt.activeBg} shadow-md`
                                   : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                               }`}
                             >
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-all duration-300 ${
+                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-3 transition-all duration-300 ${
                                 isActive ? `bg-gradient-to-br ${opt.gradient} shadow-md` : 'bg-gray-100 group-hover:bg-gray-200'
                               }`}>
-                                <Icon size={22} className={isActive ? 'text-white' : 'text-gray-500'} />
+                                <Icon size={20} className={isActive ? 'text-white' : 'text-gray-500'} />
                               </div>
-                              <span className={`text-sm font-bold transition-colors ${isActive ? opt.text : 'text-gray-700'}`}>
+                              <span className={`text-xs sm:text-sm font-bold transition-colors ${isActive ? opt.text : 'text-gray-700'}`}>
                                 {opt.label}
                               </span>
                               <span className="text-[10px] text-gray-400 mt-1 leading-tight">{opt.desc}</span>
@@ -343,7 +343,7 @@ export default function BuatAkunPage() {
 
                     {/* RIGHT: Form fields */}
                     <div className="flex flex-col gap-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Nama */}
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nama Lengkap *</label>
@@ -364,7 +364,7 @@ export default function BuatAkunPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Password */}
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Password *</label>
