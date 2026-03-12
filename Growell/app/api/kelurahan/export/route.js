@@ -6,50 +6,63 @@ import ExcelJS from 'exceljs';
 /**
  * GET /api/kelurahan/export
  * Export comprehensive 3-sheet Excel with:
- *   Sheet 1 — Ringkasan   : summary stats & status gizi distribution insights
- *   Sheet 2 — Pengukuran  : all kader-form data (balita + measurements)
- *   Sheet 3 — Survey OT   : all parent-form data (survey_balita)
+ *   Sheet 1 — Ringkasan   : summary stats & status gizi distribution
+ *   Sheet 2 — Pengukuran  : kader-form data (balita + measurements)
+ *   Sheet 3 — Survey OT   : parent-form data (survey_balita)
+ *
+ * Status gizi categories:
+ *   TB/U  : Sangat Pendek, Pendek, Normal, Tinggi
+ *   BB/TB : Gizi Buruk, Gizi Kurang, Gizi Baik, Gizi Lebih
+ *   BB/U  : Berat Badan Sangat Kurang, Berat Badan Kurang, Berat Badan Normal, Berat Badan Lebih
  */
 export async function GET(request) {
   const { user, error } = await requireAuth(request, ['kelurahan', 'puskesmas']);
   if (error) return error;
 
   try {
-    // ── 1. Summary stats ───────────────────────────────────────────
+    // ── Shared CTE: latest pengukuran per balita ─────────────────
+    const latestCTE = `
+      SELECT pk.*
+      FROM pengukuran pk
+      INNER JOIN (
+        SELECT balita_id, MAX(tanggal_pengukuran) as max_tgl
+        FROM pengukuran
+        GROUP BY balita_id
+      ) mx ON pk.balita_id = mx.balita_id AND pk.tanggal_pengukuran = mx.max_tgl
+    `;
+
+    // ── 1. Summary stats (based on latest pengukuran per balita) ─
     const [[summary]] = await pool.query(`
       SELECT
-        COUNT(DISTINCT b.id)                                            AS total_balita,
-        COUNT(pk.id)                                                    AS total_pengukuran,
+        (SELECT COUNT(*) FROM balita WHERE is_active = TRUE) AS total_balita,
+        COUNT(DISTINCT lp.balita_id) AS total_balita_diukur,
         /* BB/U */
-        SUM(CASE WHEN pk.status_gizi_bbu = 'Gizi Baik'        THEN 1 ELSE 0 END) AS bbu_baik,
-        SUM(CASE WHEN pk.status_gizi_bbu = 'Gizi Kurang'      THEN 1 ELSE 0 END) AS bbu_kurang,
-        SUM(CASE WHEN pk.status_gizi_bbu = 'Gizi Buruk'       THEN 1 ELSE 0 END) AS bbu_buruk,
-        SUM(CASE WHEN pk.status_gizi_bbu = 'Gizi Lebih'       THEN 1 ELSE 0 END) AS bbu_lebih,
-        SUM(CASE WHEN pk.status_gizi_bbu = 'Berisiko Gizi Lebih' THEN 1 ELSE 0 END) AS bbu_berisiko,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbu = 'Berat Badan Normal'        THEN b.id END) AS bbu_normal,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbu = 'Berat Badan Kurang'        THEN b.id END) AS bbu_kurang,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbu = 'Berat Badan Sangat Kurang' THEN b.id END) AS bbu_sangat_kurang,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbu = 'Berat Badan Lebih'         THEN b.id END) AS bbu_lebih,
         /* TB/U */
-        SUM(CASE WHEN pk.status_gizi_tbu = 'Normal'           THEN 1 ELSE 0 END) AS tbu_normal,
-        SUM(CASE WHEN pk.status_gizi_tbu = 'Pendek'           THEN 1 ELSE 0 END) AS tbu_pendek,
-        SUM(CASE WHEN pk.status_gizi_tbu = 'Sangat Pendek'    THEN 1 ELSE 0 END) AS tbu_sangat_pendek,
-        SUM(CASE WHEN pk.status_gizi_tbu = 'Tinggi'           THEN 1 ELSE 0 END) AS tbu_tinggi,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_tbu = 'Normal'        THEN b.id END) AS tbu_normal,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_tbu = 'Pendek'        THEN b.id END) AS tbu_pendek,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_tbu = 'Sangat Pendek' THEN b.id END) AS tbu_sangat_pendek,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_tbu = 'Tinggi'        THEN b.id END) AS tbu_tinggi,
         /* BB/TB */
-        SUM(CASE WHEN pk.status_gizi_bbtb = 'Gizi Baik'       THEN 1 ELSE 0 END) AS bbtb_baik,
-        SUM(CASE WHEN pk.status_gizi_bbtb = 'Gizi Kurang'     THEN 1 ELSE 0 END) AS bbtb_kurang,
-        SUM(CASE WHEN pk.status_gizi_bbtb = 'Gizi Buruk'      THEN 1 ELSE 0 END) AS bbtb_buruk,
-        SUM(CASE WHEN pk.status_gizi_bbtb = 'Gizi Lebih'      THEN 1 ELSE 0 END) AS bbtb_lebih,
-        SUM(CASE WHEN pk.status_gizi_bbtb = 'Berisiko Gizi Lebih' THEN 1 ELSE 0 END) AS bbtb_berisiko,
-        /* combined stunting / wasting */
-        SUM(CASE WHEN pk.status_gizi_tbu  IN ('Pendek','Sangat Pendek') THEN 1 ELSE 0 END) AS stunting,
-        SUM(CASE WHEN pk.status_gizi_bbtb IN ('Gizi Buruk','Gizi Kurang') THEN 1 ELSE 0 END) AS wasting,
-        SUM(CASE WHEN pk.status_gizi_bbu  IN ('Gizi Buruk','Gizi Kurang') THEN 1 ELSE 0 END) AS underweight
-      FROM pengukuran pk
-      JOIN balita b ON pk.balita_id = b.id
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbtb = 'Gizi Baik'   THEN b.id END) AS bbtb_baik,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbtb = 'Gizi Kurang'  THEN b.id END) AS bbtb_kurang,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbtb = 'Gizi Buruk'   THEN b.id END) AS bbtb_buruk,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbtb = 'Gizi Lebih'   THEN b.id END) AS bbtb_lebih,
+        /* combined */
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_tbu  IN ('Pendek','Sangat Pendek') THEN b.id END) AS stunting,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbtb IN ('Gizi Buruk','Gizi Kurang') THEN b.id END) AS wasting,
+        COUNT(DISTINCT CASE WHEN lp.status_gizi_bbu  IN ('Berat Badan Sangat Kurang','Berat Badan Kurang') THEN b.id END) AS underweight
+      FROM balita b
+      LEFT JOIN (${latestCTE}) lp ON lp.balita_id = b.id
       WHERE b.is_active = TRUE
     `);
 
-    // ── 2. Pengukuran rows (kader form data) ───────────────────────
+    // ── 2. All pengukuran rows (kader form data) ─────────────────
     const [pengRows] = await pool.query(`
       SELECT
-        b.uuid                  AS balita_uuid,
         b.nama                  AS nama_balita,
         b.jenis_kelamin,
         b.tanggal_lahir,
@@ -57,10 +70,9 @@ export async function GET(request) {
         b.nama_ayah,
         b.berat_lahir,
         b.panjang_lahir         AS tinggi_lahir,
-        b.kelurahan             AS kelurahan_balita,
-        p.nama                  AS posyandu,
+        COALESCE(b.kelurahan, p.kelurahan) AS kelurahan_balita,
+        COALESCE(p.nama, b.nama_posyandu) AS posyandu,
         p.kecamatan,
-        p.kelurahan             AS kelurahan_posyandu,
         TIMESTAMPDIFF(MONTH, b.tanggal_lahir, pk.tanggal_pengukuran) AS usia_bulan,
         pk.tanggal_pengukuran,
         pk.berat_badan,
@@ -79,19 +91,18 @@ export async function GET(request) {
       JOIN balita b ON pk.balita_id = b.id
       LEFT JOIN posyandu p ON b.posyandu_id = p.id
       WHERE b.is_active = TRUE
-      ORDER BY p.nama, b.nama, pk.tanggal_pengukuran DESC
+      ORDER BY COALESCE(p.nama, b.nama_posyandu), b.nama, pk.tanggal_pengukuran DESC
     `);
 
-    // ── 3. Survey rows (parent form data) ─────────────────────────
+    // ── 3. Survey rows (parent form data) ────────────────────────
     const [surveyRows] = await pool.query(`
       SELECT
-        b.uuid                          AS balita_uuid,
         b.nama                          AS nama_balita,
         b.jenis_kelamin,
         b.tanggal_lahir,
         b.nama_ibu,
-        p.nama                          AS posyandu,
-        p.kelurahan,
+        COALESCE(p.nama, b.nama_posyandu) AS posyandu,
+        COALESCE(p.kelurahan, b.kelurahan) AS kelurahan,
         p.kecamatan,
         sv.created_at                   AS tanggal_survey,
         /* Riwayat Kelahiran */
@@ -190,7 +201,7 @@ export async function GET(request) {
       JOIN balita b ON sv.balita_id = b.id
       LEFT JOIN posyandu p ON b.posyandu_id = p.id
       WHERE b.is_active = TRUE
-      ORDER BY p.nama, b.nama, sv.created_at DESC
+      ORDER BY COALESCE(p.nama, b.nama_posyandu), b.nama, sv.created_at DESC
     `);
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -202,13 +213,22 @@ export async function GET(request) {
       try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.join('; ') : String(v); }
       catch { return String(v); }
     };
-    const total = (n) => summary.total_pengukuran > 0 ? ` (${((n / summary.total_pengukuran) * 100).toFixed(1)}%)` : '';
 
-    const GREEN  = 'FF166534'; const GREEN_BG  = 'FFdcfce7';
-    const RED    = 'FF991b1b'; const RED_BG    = 'FFfee2e2';
-    const YELLOW = 'FF92400e'; const YELLOW_BG = 'FFfef9c3';
-    const BLUE   = 'FF1e40af'; const BLUE_BG   = 'FFdbeafe';
-    const HEADER_DARK = 'FF1e293b'; const HEADER_TEAL = 'FF0f766e'; const HEADER_VIOLET = 'FF4c1d95';
+    const pct = (n) => {
+      const measured = summary.total_balita_diukur || 0;
+      return measured > 0 ? ` (${((n / measured) * 100).toFixed(1)}%)` : '';
+    };
+
+    // ── Colors ──────────────────────────────────────────────────────
+    const GREEN_BG  = 'FFdcfce7';
+    const RED_BG    = 'FFfee2e2';
+    const YELLOW_BG = 'FFfef9c3';
+    const BLUE_BG   = 'FFdbeafe';
+    const ROW_RED   = 'FFfef2f2';  // light pink for full-row highlight
+    const ROW_AMBER = 'FFfffbeb';  // light amber for full-row highlight
+    const HEADER_DARK = 'FF1e293b';
+    const HEADER_TEAL = 'FF0f766e';
+    const HEADER_VIOLET = 'FF4c1d95';
 
     const styleHeader = (row, bgArgb) => {
       row.eachCell((cell) => {
@@ -219,13 +239,21 @@ export async function GET(request) {
       });
       row.height = 32;
     };
+
+    // Check if a status is abnormal
+    const isAbnormalBBTB = (s) => s && ['Gizi Buruk', 'Gizi Kurang', 'Gizi Lebih'].includes(s);
+    const isAbnormalTBU  = (s) => s && ['Sangat Pendek', 'Pendek', 'Tinggi'].includes(s);
+    const isAbnormalBBU  = (s) => s && ['Berat Badan Sangat Kurang', 'Berat Badan Kurang', 'Berat Badan Lebih'].includes(s);
+    const isSevere       = (s) => s && (/Buruk|Sangat Pendek|Sangat Kurang/i).test(s);
+
+    // Status cell fill
     const statusFill = (val) => {
       if (!val) return null;
       const s = val.toLowerCase();
-      if (s.includes('gizi baik') || s.includes('normal') || s.includes('berat badan normal')) return GREEN_BG;
+      if (s.includes('gizi baik') || s === 'normal' || s.includes('berat badan normal')) return GREEN_BG;
       if (s.includes('gizi buruk') || s.includes('sangat pendek') || s.includes('sangat kurang')) return RED_BG;
-      if (s.includes('gizi kurang') || s.includes('pendek') || s.includes('kurang')) return YELLOW_BG;
-      if (s.includes('lebih') || s.includes('berisiko')) return BLUE_BG;
+      if (s.includes('gizi kurang') || s.includes('pendek') || s.includes('berat badan kurang')) return YELLOW_BG;
+      if (s.includes('lebih') || s.includes('tinggi')) return BLUE_BG;
       return null;
     };
 
@@ -277,33 +305,31 @@ export async function GET(request) {
     const hdrRow = ws1.addRow(['Metrik', 'Jumlah', 'Keterangan']);
     styleHeader(hdrRow, HEADER_DARK);
 
-    addStat(ws1, 'Total Balita Terdata',    summary.total_balita || 0);
-    addStat(ws1, 'Total Catatan Pengukuran', summary.total_pengukuran || 0);
+    addStat(ws1, 'Total Balita Terdaftar', summary.total_balita || 0);
+    addStat(ws1, 'Total Balita Sudah Diukur', summary.total_balita_diukur || 0);
 
-    // BB/U
+    // BB/U — Berat Badan / Umur
     addSection(ws1, '📊 Distribusi Status Gizi BB/U (Berat Badan / Umur)');
-    addStat(ws1, 'Gizi Baik',         (summary.bbu_baik    || 0) + total(summary.bbu_baik    || 0), GREEN_BG);
-    addStat(ws1, 'Gizi Kurang',       (summary.bbu_kurang  || 0) + total(summary.bbu_kurang  || 0), YELLOW_BG);
-    addStat(ws1, 'Gizi Buruk',        (summary.bbu_buruk   || 0) + total(summary.bbu_buruk   || 0), RED_BG);
-    addStat(ws1, 'Gizi Lebih',        (summary.bbu_lebih   || 0) + total(summary.bbu_lebih   || 0), BLUE_BG);
-    addStat(ws1, 'Berisiko Gizi Lebih',(summary.bbu_berisiko|| 0) + total(summary.bbu_berisiko|| 0), BLUE_BG);
-    addStat(ws1, '⚠️  Underweight (Gizi Buruk + Kurang)', summary.underweight || 0, RED_BG);
+    addStat(ws1, 'Berat Badan Normal',        (summary.bbu_normal        || 0) + pct(summary.bbu_normal        || 0), GREEN_BG);
+    addStat(ws1, 'Berat Badan Kurang',        (summary.bbu_kurang        || 0) + pct(summary.bbu_kurang        || 0), YELLOW_BG);
+    addStat(ws1, 'Berat Badan Sangat Kurang', (summary.bbu_sangat_kurang || 0) + pct(summary.bbu_sangat_kurang || 0), RED_BG);
+    addStat(ws1, 'Berat Badan Lebih',         (summary.bbu_lebih         || 0) + pct(summary.bbu_lebih         || 0), BLUE_BG);
+    addStat(ws1, '⚠️  Underweight (Kurang + Sangat Kurang)', summary.underweight || 0, RED_BG);
 
-    // TB/U
+    // TB/U — Tinggi Badan / Umur
     addSection(ws1, '📊 Distribusi Status Gizi TB/U (Tinggi Badan / Umur)');
-    addStat(ws1, 'Normal',            (summary.tbu_normal      || 0) + total(summary.tbu_normal      || 0), GREEN_BG);
-    addStat(ws1, 'Pendek',            (summary.tbu_pendek      || 0) + total(summary.tbu_pendek      || 0), YELLOW_BG);
-    addStat(ws1, 'Sangat Pendek',     (summary.tbu_sangat_pendek||0) + total(summary.tbu_sangat_pendek||0), RED_BG);
-    addStat(ws1, 'Tinggi',            (summary.tbu_tinggi      || 0) + total(summary.tbu_tinggi      || 0), BLUE_BG);
+    addStat(ws1, 'Normal',        (summary.tbu_normal       || 0) + pct(summary.tbu_normal       || 0), GREEN_BG);
+    addStat(ws1, 'Pendek',        (summary.tbu_pendek       || 0) + pct(summary.tbu_pendek       || 0), YELLOW_BG);
+    addStat(ws1, 'Sangat Pendek', (summary.tbu_sangat_pendek|| 0) + pct(summary.tbu_sangat_pendek|| 0), RED_BG);
+    addStat(ws1, 'Tinggi',        (summary.tbu_tinggi       || 0) + pct(summary.tbu_tinggi       || 0), BLUE_BG);
     addStat(ws1, '⚠️  Stunting (Pendek + Sangat Pendek)', summary.stunting || 0, RED_BG);
 
-    // BB/TB
+    // BB/TB — Berat Badan / Tinggi Badan
     addSection(ws1, '📊 Distribusi Status Gizi BB/TB (Berat Badan / Tinggi Badan)');
-    addStat(ws1, 'Gizi Baik',         (summary.bbtb_baik    || 0) + total(summary.bbtb_baik    || 0), GREEN_BG);
-    addStat(ws1, 'Gizi Kurang',       (summary.bbtb_kurang  || 0) + total(summary.bbtb_kurang  || 0), YELLOW_BG);
-    addStat(ws1, 'Gizi Buruk',        (summary.bbtb_buruk   || 0) + total(summary.bbtb_buruk   || 0), RED_BG);
-    addStat(ws1, 'Gizi Lebih',        (summary.bbtb_lebih   || 0) + total(summary.bbtb_lebih   || 0), BLUE_BG);
-    addStat(ws1, 'Berisiko Gizi Lebih',(summary.bbtb_berisiko|| 0) + total(summary.bbtb_berisiko|| 0), BLUE_BG);
+    addStat(ws1, 'Gizi Baik',   (summary.bbtb_baik   || 0) + pct(summary.bbtb_baik   || 0), GREEN_BG);
+    addStat(ws1, 'Gizi Kurang', (summary.bbtb_kurang || 0) + pct(summary.bbtb_kurang || 0), YELLOW_BG);
+    addStat(ws1, 'Gizi Buruk',  (summary.bbtb_buruk  || 0) + pct(summary.bbtb_buruk  || 0), RED_BG);
+    addStat(ws1, 'Gizi Lebih',  (summary.bbtb_lebih  || 0) + pct(summary.bbtb_lebih  || 0), BLUE_BG);
     addStat(ws1, '⚠️  Wasting (Gizi Buruk + Kurang BB/TB)', summary.wasting || 0, RED_BG);
 
     ws1.views = [{ state: 'frozen', ySplit: 4 }];
@@ -313,7 +339,7 @@ export async function GET(request) {
     // ════════════════════════════════════════════════════════════════
     const ws2 = wb.addWorksheet('Data Pengukuran');
     const pengHeaders = [
-      'No', 'UUID Balita', 'Nama Balita', 'Jenis Kelamin', 'Tanggal Lahir', 'Usia (Bln)',
+      'No', 'Nama Balita', 'Jenis Kelamin', 'Tanggal Lahir', 'Usia (Bln)',
       'Nama Ibu', 'Nama Ayah', 'BB Lahir (kg)', 'Tinggi Lahir (cm)',
       'Kelurahan', 'Posyandu', 'Kecamatan',
       'Tgl Pengukuran', 'Berat Badan (kg)', 'Tinggi Badan (cm)', 'LiLA (cm)', 'Lingkar Kepala (cm)',
@@ -324,16 +350,16 @@ export async function GET(request) {
     ws2.addRow(pengHeaders);
     styleHeader(ws2.getRow(1), HEADER_TEAL);
 
-    const pengColWidths = [5,18,22,14,14,10,20,20,12,13,18,20,16,14,14,14,10,14,16,18,16,18,30,40,30,25];
+    const pengColWidths = [5,22,14,14,10,20,20,12,13,18,20,16,14,14,14,10,14,16,22,16,18,30,40,30,25];
     pengColWidths.forEach((w,i) => ws2.getColumn(i+1).width = w);
 
     pengRows.forEach((r, idx) => {
       const row = ws2.addRow([
-        idx + 1, fmt(r.balita_uuid), fmt(r.nama_balita), fmt(r.jenis_kelamin),
+        idx + 1, fmt(r.nama_balita), fmt(r.jenis_kelamin),
         fmtD(r.tanggal_lahir), r.usia_bulan ?? '',
         fmt(r.nama_ibu), fmt(r.nama_ayah),
         r.berat_lahir ?? '', r.tinggi_lahir ?? '',
-        fmt(r.kelurahan_balita || r.kelurahan_posyandu), fmt(r.posyandu), fmt(r.kecamatan),
+        fmt(r.kelurahan_balita), fmt(r.posyandu), fmt(r.kecamatan),
         fmtD(r.tanggal_pengukuran),
         r.berat_badan ?? '', r.tinggi_badan ?? '', r.lila ?? '', r.lingkar_kepala ?? '',
         fmt(r.kondisi_bb_bulan_lalu),
@@ -342,8 +368,21 @@ export async function GET(request) {
         fmt(r.catatan_rekomendasi), fmt(r.catatan),
       ]);
 
-      // Colour-code the three status columns (20, 21, 22)
-      [20, 21, 22].forEach((ci) => {
+      // Determine if this row has any abnormal status
+      const hasAbnormal = isAbnormalBBTB(r.status_gizi_bbtb) || isAbnormalTBU(r.status_gizi_tbu) || isAbnormalBBU(r.status_gizi_bbu);
+      const hasSevere = isSevere(r.status_gizi_bbtb) || isSevere(r.status_gizi_tbu) || isSevere(r.status_gizi_bbu);
+
+      // Highlight entire row if status is abnormal
+      if (hasAbnormal) {
+        const rowBg = hasSevere ? ROW_RED : ROW_AMBER;
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+        });
+      }
+
+      // Additionally, colour-code the three status columns more prominently
+      const statusCols = [19, 20, 21]; // Status BB/U, TB/U, BB/TB
+      statusCols.forEach((ci) => {
         const cell = row.getCell(ci);
         const fill = statusFill(cell.value);
         if (fill) {
@@ -365,7 +404,7 @@ export async function GET(request) {
     const ws3 = wb.addWorksheet('Survey Orang Tua');
     const surveyHeaders = [
       // Identitas
-      'No', 'UUID Balita', 'Nama Balita', 'JK', 'Tgl Lahir', 'Nama Ibu',
+      'No', 'Nama Balita', 'JK', 'Tgl Lahir', 'Nama Ibu',
       'Posyandu', 'Kelurahan', 'Kecamatan', 'Tgl Survey',
       // Sec 2 – Riwayat Kelahiran
       'Usia Kehamilan (mgg)', 'BBLR', 'Prematur', 'IMD', 'Komplikasi Lahir', 'Jenis Komplikasi',
@@ -406,15 +445,15 @@ export async function GET(request) {
     ws3.addRow(surveyHeaders);
     styleHeader(ws3.getRow(1), HEADER_VIOLET);
 
-    // auto width ~16 for all; override a few wider ones
+    // auto width
     surveyHeaders.forEach((h, i) => ws3.getColumn(i+1).width = Math.min(Math.max(h.length + 4, 14), 35));
     ws3.getColumn(1).width = 5;
-    ws3.getColumn(3).width = 22;
+    ws3.getColumn(2).width = 22;
 
     surveyRows.forEach((r, idx) => {
       const row = ws3.addRow([
         // Identitas
-        idx + 1, fmt(r.balita_uuid), fmt(r.nama_balita), fmt(r.jenis_kelamin),
+        idx + 1, fmt(r.nama_balita), fmt(r.jenis_kelamin),
         fmtD(r.tanggal_lahir), fmt(r.nama_ibu),
         fmt(r.posyandu), fmt(r.kelurahan), fmt(r.kecamatan), fmtD(r.tanggal_survey),
         // Riwayat Kelahiran
