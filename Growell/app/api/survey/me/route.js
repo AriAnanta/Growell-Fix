@@ -14,7 +14,7 @@ export async function GET(request) {
     if (balitaUuid) {
       // Fetch latest survey for a specific balita — used when parent selects child from dropdown
       [latestSurvey] = await pool.query(
-        `SELECT sb.*, b.nama as nama_balita, b.tanggal_lahir as tanggal_lahir_balita, b.nama_ibu
+        `SELECT sb.*, b.nama as nama_balita, b.tanggal_lahir as tanggal_lahir_balita, b.nama_orang_tua
          FROM survey_balita sb
          JOIN balita b ON sb.balita_id = b.id
          WHERE b.uuid = ?
@@ -24,7 +24,7 @@ export async function GET(request) {
     } else {
       // Fallback: latest survey for any balita linked to this orang_tua account
       [latestSurvey] = await pool.query(
-        `SELECT sb.*, b.nama as nama_balita, b.tanggal_lahir as tanggal_lahir_balita, b.nama_ibu
+        `SELECT sb.*, b.nama as nama_balita, b.tanggal_lahir as tanggal_lahir_balita, b.nama_orang_tua
          FROM survey_balita sb
          JOIN balita b ON sb.balita_id = b.id
          WHERE b.orang_tua_id = ?
@@ -44,7 +44,7 @@ export async function GET(request) {
     const mappedForm = {
       namaBalita: s.nama_balita || '',
       tanggalLahirBalita: s.tanggal_lahir_balita ? new Date(s.tanggal_lahir_balita).toISOString().split('T')[0] : '',
-      namaOrangTua: s.nama_ibu || user.nama || '',
+      namaOrangTua: s.nama_orang_tua || user.nama || '',
       
       // Riwayat Kelahiran
       bbLahirRendah: s.is_bblr ? 'Ya' : 'Tidak',

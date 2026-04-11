@@ -230,6 +230,116 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 ---
 
+## 🗄️ Migrasi Database & Import Dataset
+
+### Perubahan Schema: `nama_ibu` / `nama_ayah` → `nama_orang_tua`
+
+Tabel `balita` sebelumnya memiliki kolom `nama_ibu` dan `nama_ayah` secara terpisah. Sekarang kedua kolom tersebut digabung menjadi satu kolom **`nama_orang_tua`** agar selaras dengan form kader dan form orang tua.
+
+#### Apa yang berubah?
+
+| Sebelum | Sesudah |
+|---------|---------|
+| `nama_ibu VARCHAR(100)` | ❌ Dihapus |
+| `nama_ayah VARCHAR(100)` | ❌ Dihapus |
+| — | ✅ `nama_orang_tua VARCHAR(100)` (baru) |
+
+Script migrasi (`scripts/migrate.js`) sudah menangani perubahan ini secara otomatis:
+1. Menambahkan kolom `nama_orang_tua`
+2. Meng-copy data yang ada dari `COALESCE(nama_ibu, nama_ayah)` ke `nama_orang_tua`
+3. Menghapus kolom `nama_ibu` dan `nama_ayah`
+
+---
+
+### Langkah Migrasi — Docker
+
+```bash
+# 1. Pastikan container database sudah berjalan
+docker-compose up -d db
+
+# 2. Jalankan migrasi via container app
+docker-compose exec app node scripts/migrate.js
+
+# 3. (Opsional) Import dataset dari file dataset.sql
+#    Copy file dataset.sql ke dalam container dulu
+docker cp dataset.sql growell-app:/app/dataset.sql
+docker-compose exec app sh -c "mysql -h db -u growell_user -pgrowell_password_2024 growell_db < /app/dataset.sql"
+
+# 4. Restart semua service
+docker-compose restart
+```
+
+> **Catatan:** Jika ini adalah setup baru (fresh install), cukup jalankan `docker-compose up -d` — migrasi dan seed akan berjalan otomatis melalui `docker-entrypoint.sh`.
+
+---
+
+### Langkah Migrasi — VPS (Manual / Production)
+
+```bash
+# 1. SSH ke VPS
+ssh user@your-vps-ip
+
+# 2. Masuk ke folder project
+cd /path/to/Growell
+
+# 3. Backup database terlebih dahulu (PENTING!)
+mysqldump -u growell_user -p growell_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 4. Jalankan migrasi
+npm run db:migrate
+# atau langsung:
+node scripts/migrate.js
+
+# 5. (Opsional) Import dataset
+mysql -u growell_user -p growell_db < /path/to/dataset.sql
+
+# 6. Restart aplikasi
+pm2 restart growell
+# atau jika menggunakan systemd:
+sudo systemctl restart growell
+```
+
+---
+
+### Langkah Migrasi — Development Lokal
+
+```bash
+cd Growell
+
+# 1. Jalankan migrasi
+npm run db:migrate
+
+# 2. (Opsional) Import dataset
+mysql -u growell_user -p growell_db < ../dataset.sql
+
+# 3. Jalankan dev server
+npm run dev
+```
+
+---
+
+### Regenerasi dataset.sql dari Excel
+
+Jika data di `dataset.xlsx` berubah (misalnya mengisi nama balita atau nama orang tua), regenerasi file `dataset.sql` dengan perintah:
+
+```powershell
+# Dari folder root project (Web Inno Fix/)
+.\regenerate-dataset-sql.ps1
+```
+
+Script ini akan:
+- Membaca semua data dari `dataset.xlsx`
+- Mengambil **Nama Balita** dari kolom [2] atau [22] (fallback: "Balita N")
+- Mengambil **Nama Orang Tua** dari kolom [3] atau [21]
+- Menghasilkan file `dataset.sql` yang siap di-import ke database
+
+**Prasyarat:** Python 3.9+ dengan library `pandas` dan `openpyxl`:
+```bash
+pip install pandas openpyxl
+```
+
+---
+
 ## 🔐 Sistem Autentikasi & Peran
 
 ### Skema Pendaftaran

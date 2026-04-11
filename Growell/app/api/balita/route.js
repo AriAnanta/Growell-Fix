@@ -116,7 +116,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { nama, nik, tanggal_lahir, jenis_kelamin, berat_lahir, panjang_lahir,
-      nama_ibu, nama_ayah, orang_tua_id, posyandu_id, alamat } = body;
+      nama_orang_tua, orang_tua_id, posyandu_id, alamat } = body;
 
     if (!nama || !tanggal_lahir || !jenis_kelamin) {
       return NextResponse.json({ error: 'Nama, tanggal lahir, dan jenis kelamin wajib diisi' }, { status: 400 });
@@ -131,10 +131,10 @@ export async function POST(request) {
 
     const [result] = await pool.query(
       `INSERT INTO balita (uuid, nik, nama, tanggal_lahir, jenis_kelamin, berat_lahir, panjang_lahir,
-        nama_ibu, nama_ayah, orang_tua_id, posyandu_id, alamat)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        nama_orang_tua, orang_tua_id, posyandu_id, alamat)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [uuid, nik || null, nama, tanggal_lahir, jenis_kelamin, berat_lahir || null,
-       panjang_lahir || null, nama_ibu || null, nama_ayah || null,
+       panjang_lahir || null, nama_orang_tua || null,
        finalOrangTuaId, posyandu_id || null, alamat || null]
     );
 

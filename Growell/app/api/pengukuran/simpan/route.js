@@ -18,7 +18,7 @@ export async function POST(request) {
       nama_balita,
       tanggal_lahir,
       jenis_kelamin,
-      nama_ibu,
+      nama_orang_tua,
       berat_lahir,
       tinggi_lahir,
       kelurahan,     // optional — saved to balita.kelurahan
@@ -77,14 +77,14 @@ export async function POST(request) {
       balitaUuid = uuidv4();
       const [newBalita] = await pool.query(
         `INSERT INTO balita
-           (uuid, nama, tanggal_lahir, jenis_kelamin, nama_ibu, berat_lahir, panjang_lahir, posyandu_id, kelurahan, nama_posyandu)
+           (uuid, nama, tanggal_lahir, jenis_kelamin, nama_orang_tua, berat_lahir, panjang_lahir, posyandu_id, kelurahan, nama_posyandu)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           balitaUuid,
           nama_balita,
           tanggal_lahir,
           jenis_kelamin,
-          nama_ibu || null,
+          nama_orang_tua || null,
           berat_lahir || null,
           tinggi_lahir || null,
           posyandu_id,

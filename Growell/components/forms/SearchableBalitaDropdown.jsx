@@ -7,7 +7,7 @@ import { ChevronDown, Search, X, User } from 'lucide-react';
  * Displays child name with parent name subtitles.
  *
  * Props:
- *  - items: Array<{ uuid, nama, nama_ibu, tanggal_lahir, kelurahan, kecamatan, status_gizi_bbtb, status_gizi_tbu }>
+ *  - items: Array<{ uuid, nama, nama_orang_tua, tanggal_lahir, kelurahan, kecamatan, status_gizi_bbtb, status_gizi_tbu }>
  *  - selected: uuid string of currently selected balita
  *  - onSelect: (item) => void — called with the full balita item on selection
  *  - placeholder: string
@@ -51,7 +51,7 @@ export default function SearchableBalitaDropdown({
           const q = query.toLowerCase();
           return (
             (i.nama || '').toLowerCase().includes(q) ||
-            (i.nama_ibu || '').toLowerCase().includes(q)
+            (i.nama_orang_tua || '').toLowerCase().includes(q)
           );
         });
 
@@ -85,8 +85,8 @@ export default function SearchableBalitaDropdown({
             </div>
             <div className="min-w-0">
               <p className="text-gray-900 font-semibold text-sm truncate">{selectedItem.nama}</p>
-              {selectedItem.nama_ibu && (
-                <p className="text-gray-400 text-xs truncate">Ibu: {selectedItem.nama_ibu}</p>
+              {selectedItem.nama_orang_tua && (
+                <p className="text-gray-400 text-xs truncate">Ortu: {selectedItem.nama_orang_tua}</p>
               )}
             </div>
           </div>
@@ -124,7 +124,7 @@ export default function SearchableBalitaDropdown({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ketik nama balita atau nama ibu..."
+                placeholder="Ketik nama balita atau nama orang tua..."
                 className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-900 focus:bg-white transition-all placeholder:text-gray-400"
               />
             </div>
@@ -152,8 +152,8 @@ export default function SearchableBalitaDropdown({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-900 truncate">{item.nama}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {item.nama_ibu && (
-                        <span className="text-xs text-gray-400 truncate">Ibu: {item.nama_ibu}</span>
+                      {item.nama_orang_tua && (
+                        <span className="text-xs text-gray-400 truncate">Ortu: {item.nama_orang_tua}</span>
                       )}
                       {item.tanggal_lahir && (
                         <span className="text-xs text-gray-300">·</span>

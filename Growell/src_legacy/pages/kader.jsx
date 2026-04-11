@@ -452,7 +452,7 @@ export default function KaderDashboard() {
           nama_balita: formData.namaBalita,
           tanggal_lahir: formData.tanggalLahir,
           jenis_kelamin: formData.jenisKelamin,
-          nama_ibu: formData.namaIbu,
+          nama_orang_tua: formData.namaIbu,
           berat_lahir: toNumber(formData.beratLahir),
           tinggi_lahir: toNumber(formData.tinggiLahir),
           tanggal_pengukuran: formData.tanggalPengukuran,

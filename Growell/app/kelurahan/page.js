@@ -753,7 +753,7 @@ export default function KelurahanDashboard() {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="text-left py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider">Nama Balita</th>
-                    <th className="text-left py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Ibu</th>
+                    <th className="text-left py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Orang Tua</th>
                     <th className="text-center py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Usia</th>
                     <th className="text-center py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider">BB/TB</th>
                     <th className="text-center py-2.5 px-3 font-semibold text-gray-500 uppercase tracking-wider">TB/U</th>
@@ -783,7 +783,7 @@ export default function KelurahanDashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-3 text-gray-600 hidden sm:table-cell">{c.nama_ibu || '-'}</td>
+                        <td className="py-3.5 px-3 text-gray-600 hidden sm:table-cell">{c.nama_orang_tua || '-'}</td>
                         <td className="py-3.5 px-3 text-center text-gray-900 font-medium hidden md:table-cell">{usia} bln</td>
                         <td className="py-3.5 px-3 text-center"><StatusBadge status={c.status_gizi_bbtb} /></td>
                         <td className="py-3.5 px-3 text-center"><StatusBadge status={c.status_gizi_tbu} /></td>

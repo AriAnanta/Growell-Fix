@@ -66,8 +66,7 @@ export async function GET(request) {
         b.nama                  AS nama_balita,
         b.jenis_kelamin,
         b.tanggal_lahir,
-        b.nama_ibu,
-        b.nama_ayah,
+        b.nama_orang_tua,
         b.berat_lahir,
         b.panjang_lahir         AS tinggi_lahir,
         COALESCE(b.kelurahan, p.kelurahan) AS kelurahan_balita,
@@ -100,7 +99,7 @@ export async function GET(request) {
         b.nama                          AS nama_balita,
         b.jenis_kelamin,
         b.tanggal_lahir,
-        b.nama_ibu,
+        b.nama_orang_tua,
         COALESCE(p.nama, b.nama_posyandu) AS posyandu,
         COALESCE(p.kelurahan, b.kelurahan) AS kelurahan,
         p.kecamatan,
@@ -340,7 +339,7 @@ export async function GET(request) {
     const ws2 = wb.addWorksheet('Data Pengukuran');
     const pengHeaders = [
       'No', 'Nama Balita', 'Jenis Kelamin', 'Tanggal Lahir', 'Usia (Bln)',
-      'Nama Ibu', 'Nama Ayah', 'BB Lahir (kg)', 'Tinggi Lahir (cm)',
+      'Nama Orang Tua', 'BB Lahir (kg)', 'Tinggi Lahir (cm)',
       'Kelurahan', 'Posyandu', 'Kecamatan',
       'Tgl Pengukuran', 'Berat Badan (kg)', 'Tinggi Badan (cm)', 'LiLA (cm)', 'Lingkar Kepala (cm)',
       'Kondisi BB Bln Lalu',
@@ -350,14 +349,14 @@ export async function GET(request) {
     ws2.addRow(pengHeaders);
     styleHeader(ws2.getRow(1), HEADER_TEAL);
 
-    const pengColWidths = [5,22,14,14,10,20,20,12,13,18,20,16,14,14,14,10,14,16,22,16,18,30,40,30,25];
+    const pengColWidths = [5,22,14,14,10,22,12,13,18,20,16,14,14,14,10,14,16,22,16,18,30,40,30,25];
     pengColWidths.forEach((w,i) => ws2.getColumn(i+1).width = w);
 
     pengRows.forEach((r, idx) => {
       const row = ws2.addRow([
         idx + 1, fmt(r.nama_balita), fmt(r.jenis_kelamin),
         fmtD(r.tanggal_lahir), r.usia_bulan ?? '',
-        fmt(r.nama_ibu), fmt(r.nama_ayah),
+        fmt(r.nama_orang_tua),
         r.berat_lahir ?? '', r.tinggi_lahir ?? '',
         fmt(r.kelurahan_balita), fmt(r.posyandu), fmt(r.kecamatan),
         fmtD(r.tanggal_pengukuran),
@@ -381,7 +380,7 @@ export async function GET(request) {
       }
 
       // Additionally, colour-code the three status columns more prominently
-      const statusCols = [19, 20, 21]; // Status BB/U, TB/U, BB/TB
+      const statusCols = [18, 19, 20]; // Status BB/U, TB/U, BB/TB
       statusCols.forEach((ci) => {
         const cell = row.getCell(ci);
         const fill = statusFill(cell.value);
@@ -404,7 +403,7 @@ export async function GET(request) {
     const ws3 = wb.addWorksheet('Survey Orang Tua');
     const surveyHeaders = [
       // Identitas
-      'No', 'Nama Balita', 'JK', 'Tgl Lahir', 'Nama Ibu',
+      'No', 'Nama Balita', 'JK', 'Tgl Lahir', 'Nama Orang Tua',
       'Posyandu', 'Kelurahan', 'Kecamatan', 'Tgl Survey',
       // Sec 2 – Riwayat Kelahiran
       'Usia Kehamilan (mgg)', 'BBLR', 'Prematur', 'IMD', 'Komplikasi Lahir', 'Jenis Komplikasi',
@@ -454,7 +453,7 @@ export async function GET(request) {
       const row = ws3.addRow([
         // Identitas
         idx + 1, fmt(r.nama_balita), fmt(r.jenis_kelamin),
-        fmtD(r.tanggal_lahir), fmt(r.nama_ibu),
+        fmtD(r.tanggal_lahir), fmt(r.nama_orang_tua),
         fmt(r.posyandu), fmt(r.kelurahan), fmt(r.kecamatan), fmtD(r.tanggal_survey),
         // Riwayat Kelahiran
         r.usia_kehamilan_lahir ?? '', bool(r.is_bblr), bool(r.is_prematur),

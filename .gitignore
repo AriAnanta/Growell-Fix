@@ -3,3 +3,8 @@ cara-deploy.md
 cara-deploy copy.md
 CTT.md
 .env
+dataset.xlsx
+dataset.sql
+growell_db.sql
+columns.txt
+regenerate-dataset-sql.ps1

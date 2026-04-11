@@ -9,7 +9,7 @@ import { requireAuth } from '@/lib/auth';
  * Accessible to all authenticated users (kader, orang_tua, etc.)
  *
  * Query params:
- *  - q: search string (optional) — filters by nama or nama_ibu
+ *  - q: search string (optional) — filters by nama or nama_orang_tua
  *  - limit: max results (default 200)
  */
 export async function GET(request) {
@@ -25,7 +25,7 @@ export async function GET(request) {
     const params = [];
 
     if (q.trim()) {
-      whereClause += ' AND (b.nama LIKE ? OR b.nama_ibu LIKE ?)';
+      whereClause += ' AND (b.nama LIKE ? OR b.nama_orang_tua LIKE ?)';
       params.push(`%${q.trim()}%`, `%${q.trim()}%`);
     }
 
@@ -33,7 +33,7 @@ export async function GET(request) {
       `SELECT
          b.uuid,
          b.nama,
-         b.nama_ibu,
+         b.nama_orang_tua,
          b.jenis_kelamin,
          b.tanggal_lahir,
          b.kelurahan,
@@ -71,7 +71,7 @@ export async function GET(request) {
     const data = rows.map((r) => ({
       uuid: r.uuid,
       nama: r.nama,
-      nama_ibu: r.nama_ibu || '',
+      nama_orang_tua: r.nama_orang_tua || '',
       jenis_kelamin: r.jenis_kelamin,
       tanggal_lahir: toLocalISO(r.tanggal_lahir),
       // Use balita.kelurahan if available, fallback to posyandu kelurahan

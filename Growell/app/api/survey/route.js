@@ -15,7 +15,7 @@ export async function POST(request) {
     // We can accept balita_uuid OR we can accept raw names from data to Find-or-Create
     const nama_balita = data?.namaBalita || data?.nama_balita;
     const tanggal_lahir = data?.tanggalLahirBalita || data?.tanggal_lahir;
-    const nama_ibu = data?.namaOrangTua || data?.nama_ibu;
+    const nama_orang_tua = data?.namaOrangTua || data?.nama_orang_tua;
 
     if (!data) {
       return NextResponse.json({ error: 'data wajib diisi' }, { status: 400 });
@@ -47,8 +47,8 @@ export async function POST(request) {
       } else {
         balitaUuid = uuidv4();
         const [newBalita] = await pool.query(
-          `INSERT INTO balita (uuid, nama, tanggal_lahir, nama_ibu, orang_tua_id, jenis_kelamin) VALUES (?, ?, ?, ?, ?, 'Perempuan')`,
-          [balitaUuid, nama_balita, tanggal_lahir, nama_ibu || null, user.id]
+          `INSERT INTO balita (uuid, nama, tanggal_lahir, nama_orang_tua, orang_tua_id, jenis_kelamin) VALUES (?, ?, ?, ?, ?, 'Perempuan')`,
+          [balitaUuid, nama_balita, tanggal_lahir, nama_orang_tua || null, user.id]
         );
         balitaId = newBalita.insertId;
       }

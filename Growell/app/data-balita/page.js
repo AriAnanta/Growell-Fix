@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -255,7 +255,7 @@ export default function ListDataBalita() {
                       <td className="py-3.5 px-5 text-sm text-gray-400 tabular-nums">{(page - 1) * 15 + index + 1}</td>
                       <td className="py-3.5 px-5">
                         <p className="text-sm font-medium text-gray-900">{item.nama || '—'}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Ibu: {item.nama_ibu || '—'}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Ortu: {item.nama_orang_tua || '—'}</p>
                       </td>
                       <td className="py-3.5 px-5 text-sm text-gray-600 hidden md:table-cell">{item.jenis_kelamin || '—'}</td>
                       <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">

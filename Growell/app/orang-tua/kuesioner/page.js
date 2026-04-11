@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -285,7 +285,7 @@ function ParentFormPage() {
     // Set identity fields immediately (always from balita record, not survey)
     const identityFields = {
       namaBalita: item.nama || '',
-      namaOrangTua: item.nama_ibu || '',
+      namaOrangTua: item.nama_orang_tua || '',
       namaKecamatan: item.kecamatan || 'Astananyar',
       namaKelurahan: item.kelurahan || '',
       namaPosyandu: item.posyandu_nama || '',

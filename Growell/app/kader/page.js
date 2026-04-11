@@ -119,7 +119,7 @@ function KaderDashboard() {
         namaKelurahan:    b.kelurahan || '',
         namaPosyandu:     b.nama_posyandu || b.posyandu_nama || '',
         namaBalita:       b.nama || '',
-        namaIbu:          b.nama_ibu || '',
+        namaIbu:          b.nama_orang_tua || '',
         tanggalLahir:     tglLahir,
         jenisKelamin:     normalizeJk(b.jenis_kelamin),
         beratLahir:       b.berat_lahir != null ? String(b.berat_lahir) : '',
@@ -597,7 +597,7 @@ function KaderDashboard() {
         // 1. Update balita identitas
         const balitaPayload = {
           nama:          formData.namaBalita,
-          nama_ibu:      formData.namaIbu || null,
+          nama_orang_tua:      formData.namaIbu || null,
           tanggal_lahir: formData.tanggalLahir,
           jenis_kelamin: formData.jenisKelamin,
           berat_lahir:   toNumber(formData.beratLahir),
@@ -661,7 +661,7 @@ function KaderDashboard() {
           nama_balita: formData.namaBalita,
           tanggal_lahir: formData.tanggalLahir,
           jenis_kelamin: formData.jenisKelamin,
-          nama_ibu: formData.namaIbu,
+          nama_orang_tua: formData.namaIbu,
           berat_lahir: toNumber(formData.beratLahir),
           tinggi_lahir: toNumber(formData.tinggiLahir),
           kelurahan: formData.namaKelurahan || null,

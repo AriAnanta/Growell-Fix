@@ -177,7 +177,7 @@ export async function GET(request) {
 
       // 9. Urgent cases
       pool.query(`
-        SELECT b.uuid, b.nama, b.tanggal_lahir, b.jenis_kelamin, b.nama_ibu,
+        SELECT b.uuid, b.nama, b.tanggal_lahir, b.jenis_kelamin, b.nama_orang_tua,
                lp.berat_badan, lp.tinggi_badan, lp.tanggal_pengukuran,
                lp.status_gizi_bbtb, lp.status_gizi_tbu, lp.status_gizi_bbu,
                lp.rekomendasi_utama,

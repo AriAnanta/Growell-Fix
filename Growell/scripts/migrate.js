@@ -52,8 +52,7 @@ const TABLES = [
     jenis_kelamin ENUM('Laki-Laki', 'Perempuan') NOT NULL,
     berat_lahir FLOAT,
     panjang_lahir FLOAT,
-    nama_ibu VARCHAR(100),
-    nama_ayah VARCHAR(100),
+    nama_orang_tua VARCHAR(100),
     orang_tua_id INT,
     posyandu_id INT,
     kelurahan VARCHAR(100),
@@ -362,7 +361,13 @@ const TABLES = [
   `ALTER TABLE survey_balita ADD COLUMN tingkat_paham_makanan VARCHAR(60) NULL AFTER is_paham_makanan_sehat`,
 
   // Section 10 — Frekuensi posyandu: was ONLY stored as INT (via mapping), add raw text label
-  `ALTER TABLE survey_balita ADD COLUMN frekuensi_posyandu VARCHAR(60) NULL AFTER frekuensi_posyandu_bulan`
+  `ALTER TABLE survey_balita ADD COLUMN frekuensi_posyandu VARCHAR(60) NULL AFTER frekuensi_posyandu_bulan`,
+
+  // ── Balita: rename nama_ibu → nama_orang_tua, drop nama_ayah ──
+  `ALTER TABLE balita ADD COLUMN nama_orang_tua VARCHAR(100) NULL AFTER panjang_lahir`,
+  `UPDATE balita SET nama_orang_tua = COALESCE(nama_ibu, nama_ayah) WHERE nama_orang_tua IS NULL`,
+  `ALTER TABLE balita DROP COLUMN nama_ibu`,
+  `ALTER TABLE balita DROP COLUMN nama_ayah`
 ];
 
 async function migrate() {

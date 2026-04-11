@@ -58,7 +58,7 @@ export async function POST(request) {
 
     const [reportData] = await pool.query(
       `SELECT 
-        b.nama AS nama_balita, b.tanggal_lahir, b.jenis_kelamin, b.nama_ibu,
+        b.nama AS nama_balita, b.tanggal_lahir, b.jenis_kelamin, b.nama_orang_tua,
         COALESCE(p.nama, b.nama_posyandu) AS posyandu_nama,
         COALESCE(p.kecamatan, 'Astananyar') AS kecamatan,
         pk.tanggal_pengukuran, pk.berat_badan, pk.tinggi_badan, pk.lingkar_lengan,
@@ -318,7 +318,7 @@ async function generateExcel(filePath, data, summary, meta) {
     { header: 'Nama Balita', key: 'nama', width: 20 },
     { header: 'Tgl Lahir', key: 'tgl_lahir', width: 14 },
     { header: 'JK', key: 'jk', width: 12 },
-    { header: 'Nama Ibu', key: 'ibu', width: 18 },
+    { header: 'Nama Orang Tua', key: 'ortu', width: 18 },
     { header: 'Kecamatan', key: 'kecamatan', width: 15 },
     { header: 'Posyandu', key: 'posyandu', width: 18 },
     { header: 'Tgl Ukur', key: 'tgl_ukur', width: 14 },
@@ -338,7 +338,7 @@ async function generateExcel(filePath, data, summary, meta) {
       no: idx + 1,
       nama: row.nama_balita,
       tgl_lahir: row.tanggal_lahir ? new Date(row.tanggal_lahir).toLocaleDateString('id-ID') : '-',
-      jk: row.jenis_kelamin, ibu: row.nama_ibu || '-',
+      jk: row.jenis_kelamin, ortu: row.nama_orang_tua || '-',
       kecamatan: row.kecamatan || '-',
       posyandu: row.posyandu_nama || '-',
       tgl_ukur: row.tanggal_pengukuran ? new Date(row.tanggal_pengukuran).toLocaleDateString('id-ID') : '-',
