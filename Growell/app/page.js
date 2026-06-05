@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, X, ChevronRight, ArrowRight, Brain, Activity, MessageSquare, FileBarChart, User, LogOut, ChevronDown, CheckCircle2, HeartPulse, Stethoscope, Baby, Star, Users, Utensils, Building, Sparkles } from 'lucide-react';
+import { Menu, X, ChevronRight, ArrowRight, Brain, Activity, MessageSquare, FileBarChart, User, LogOut, ChevronDown, CheckCircle2, HeartPulse, Stethoscope, Baby, Star, Users, Utensils, Building, Sparkles, Search, Calendar, AlertCircle } from 'lucide-react';
 import { isAuthenticated, getUserData, clearAuth } from '@/utils/auth';
+import CustomDatePicker from '@/components/forms/CustomDatePicker';
 
 export default function GrowellLanding() {
   const router = useRouter();
@@ -53,6 +54,40 @@ export default function GrowellLanding() {
     if (profileDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
+
+  const [searchName, setSearchName] = useState('');
+  const [searchBirthDate, setSearchBirthDate] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  const handlePublicSearch = async (e) => {
+    e.preventDefault();
+    if (!searchName.trim()) {
+      setSearchError('Nama lengkap balita wajib diisi.');
+      return;
+    }
+    if (!searchBirthDate) {
+      setSearchError('Tanggal lahir wajib diisi.');
+      return;
+    }
+    setSearchError('');
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/public/cek-status?nama=${encodeURIComponent(searchName.trim())}&tanggal_lahir=${searchBirthDate}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setSearchError(data.error || 'Terjadi kesalahan saat mencari data. Pastikan nama dan tanggal lahir benar.');
+      } else if (data.data && data.data.uuid) {
+        router.push(`/status/${data.data.uuid}`);
+      } else {
+        setSearchError('Data balita tidak ditemukan. Pastikan nama lengkap dan tanggal lahir sesuai.');
+      }
+    } catch (err) {
+      setSearchError('Gagal terhubung ke server.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleLogout = async () => {
     await clearAuth();
@@ -294,6 +329,94 @@ export default function GrowellLanding() {
                   <img src="/heroImage3.png" alt="Growell Hero" className="w-[140%] max-w-none sm:w-[125%] md:w-[120%] lg:w-[110%] xl:w-[110%] xl:max-w-none mx-auto h-auto object-contain object-center opacity-90 sm:-translate-x-20 max-sm:-ml-[6%] mt-20 sm:mt-0" style={{ maskImage: 'linear-gradient(to top, transparent 5%, black 40%)', WebkitMaskImage: 'linear-gradient(to top, transparent 5%, black 40%)' }} />
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── EASY SEARCH SECTION ── */}
+        <section
+          id="cek-gizi"
+          data-section-id="cek-gizi"
+          ref={(el) => (sectionRefs.current['cek-gizi'] = el)}
+          className="py-10 sm:py-16 bg-slate-50 border-y border-slate-100 relative z-20"
+        >
+          <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+            <div className={`transition-all duration-700 ${visibleSections.has('cek-gizi') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+
+              <div className="text-center mb-10 lg:mb-12">
+                <span className="inline-block px-5 py-2 bg-teal-50 text-teal-600 font-bold rounded-full tracking-wide uppercase text-sm mb-4 border border-teal-100">
+                  <Baby size={16} className="inline mr-2 -mt-0.5" /> Cek Cepat Gizi Balita
+                </span>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-800 tracking-tight mb-4">
+                  Lihat Status Pertumbuhan Si Kecil
+                </h2>
+                <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium">
+                  Masukkan nama lengkap dan tanggal lahir balita Anda (sesuai data Posyandu) untuk melihat hasil pengukuran terbaru.
+                </p>
+              </div>
+
+              <form onSubmit={handlePublicSearch} className="space-y-4 max-w-2xl mx-auto bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-xl shadow-teal-900/5 border border-slate-100 relative">
+                {/* Soft decorative background shapes inside the card, safely clipped */}
+                <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none -z-10">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50/50 rounded-bl-full" />
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-50/50 rounded-tr-full" />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Name Input */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
+                      <User size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                      placeholder="Nama Lengkap Balita"
+                      className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 hover:border-gray-400 focus:border-gray-900 focus:bg-white focus:ring-0 outline-none transition-all text-sm text-gray-900 placeholder:text-gray-400 font-semibold h-[42px]"
+                    />
+                  </div>
+
+                  {/* Date Input (Custom Date Picker) */}
+                  <div className="relative search-date-picker">
+                    <CustomDatePicker
+                      name="searchBirthDate"
+                      value={searchBirthDate}
+                      onChange={(e) => setSearchBirthDate(e.target.value)}
+                      placeholder="Tanggal Lahir"
+                      defaultYear={new Date().getFullYear() - 2}
+                    />
+                  </div>
+                </div>
+
+                {searchError && (
+                  <div className="bg-rose-50 border border-rose-100 text-rose-600 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle size={16} className="flex-shrink-0" />
+                    <span>{searchError}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSearching}
+                    className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-teal-500 to-indigo-600 text-white font-extrabold text-sm rounded-full shadow-lg shadow-teal-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 h-[42px]"
+                  >
+                    {isSearching ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Mencari Data...
+                      </>
+                    ) : (
+                      <>
+                        <Search size={16} />
+                        Cek Status Gizi
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
             </div>
           </div>
         </section>

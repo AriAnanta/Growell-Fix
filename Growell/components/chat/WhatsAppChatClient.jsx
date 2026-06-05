@@ -513,7 +513,11 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
                   <h2 className="font-semibold text-gray-900 text-[15px] leading-tight truncate">
                     {userData?.role === 'orang_tua' ? selectedChat.ahli_gizi_nama || 'Menunggu Penugasan...' : selectedChat.orang_tua_nama}
                   </h2>
-                  <span className="text-[12px] text-gray-500">{userData?.role === 'orang_tua' ? 'Ahli Gizi' : 'Orang Tua'}</span>
+                  <span className="text-[12px] text-gray-500">
+                    {userData?.role === 'orang_tua' 
+                      ? (selectedChat.ahli_gizi_nama === 'Sistem Growell' ? 'Sistem' : 'Ahli Gizi') 
+                      : 'Orang Tua'}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 relative" ref={headerMenuRef}>
@@ -577,10 +581,10 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
                   
                   return (
                     <div key={msg.uuid || idx} className={`flex group ${isMe ? 'justify-end' : 'justify-start'} ${showTail ? 'mt-3' : 'mt-0.5'}`}>
-                      <div className="flex items-end gap-1">
+                      <div className="flex items-end gap-1 max-w-[85%] sm:max-w-[75%]">
                         {/* Context menu trigger — left side for own messages */}
                         {isMe && isActive && (
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center relative">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center relative flex-shrink-0">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -595,14 +599,14 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
                           </div>
                         )}
 
-                        <div className={`relative max-w-[85%] sm:max-w-[75%] px-3.5 py-2.5 shadow-sm text-[15px] leading-snug rounded-xl ${isMe ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none' : 'bg-white text-[#111b21] rounded-tl-none border border-gray-100'}`}>
+                        <div className={`relative min-w-0 px-3.5 py-2.5 shadow-sm text-[15px] leading-snug rounded-xl ${isMe ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none' : 'bg-white text-[#111b21] rounded-tl-none border border-gray-100'}`}>
                           {showTail && (
                             <div className={`absolute top-0 w-3 h-3 ${isMe ? '-right-2 bg-[#d9fdd3] rounded-bl-full' : '-left-2 bg-white border-l border-t border-gray-100 rounded-br-full'}`} style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}></div>
                           )}
                           {!isMe && showTail && (
                             <div className="font-bold text-[13px] mb-1 opacity-90 text-teal-600">{msg.pengirim_nama}</div>
                           )}
-                          <span className="whitespace-pre-wrap flex-1 min-w-0 break-words">{msg.pesan}</span>
+                          <span className="whitespace-pre-wrap block min-w-0 break-words [word-break:break-word]">{msg.pesan}</span>
                           <div className="float-right ml-3 mt-1.5 text-[10px] text-gray-500 flex items-center gap-1">
                             {msg.is_edited && <span className="italic opacity-70">diedit</span>}
                             {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

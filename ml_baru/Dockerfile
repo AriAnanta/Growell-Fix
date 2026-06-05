@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code and models
 COPY app.py .
 COPY rekomendasi_intervensi.py .
+COPY smart_reminder.py .
 COPY *.joblib ./
 COPY models/ ./models/
 COPY models_enhanced_final/ ./models_enhanced_final/

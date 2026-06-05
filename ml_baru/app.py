@@ -13,7 +13,8 @@ from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator, create_model
 from dotenv import load_dotenv
-
+# pyrefly: ignore [missing-import]
+# pyrefly: ignore [import-error]
 # Load environment variables
 load_dotenv()
 
@@ -46,6 +47,9 @@ app = FastAPI()
 # Import and mount the rekomendasi intervensi sub-app
 from rekomendasi_intervensi import app as rekomendasi_app, determine_intervention, BalitaData as RekomendasiBalitaData, RekomendasiResponse
 
+# Import Smart Reminder logic
+from smart_reminder import predict_smart_reminder_batch, SmartReminderBatchRequest, SmartReminderBatchResponse
+
 # Allow frontend origins (Vite dev + Next.js)
 app.add_middleware(
     CORSMiddleware,
@@ -61,6 +65,16 @@ async def predict_rekomendasi_proxy(data: RekomendasiBalitaData):
     """Proxy to rekomendasi intervensi logic"""
     result = determine_intervention(data)
     return result
+
+# Mount Smart Reminder endpoint on main app
+@app.post("/predict-smart-reminder", response_model=SmartReminderBatchResponse)
+async def predict_smart_reminder_proxy(data: SmartReminderBatchRequest):
+    """Smart Reminder (Bobot + K-Medoids) API"""
+    try:
+        result = predict_smart_reminder_batch(data)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- 1. Load Models and Preprocessing Components ---
 

@@ -1,5 +1,6 @@
-﻿'use client';
+'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 /**
@@ -32,9 +33,24 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
   const [currentMonth, setCurrentMonth] = useState(getInitialMonth);
   const [pickerMode, setPickerMode] = useState(initialMode);
   const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
+  const [popupPos, setPopupPos] = useState({ top: 0, left: 0, width: 0 });
 
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
+  const popupRef = useRef(null);
   const yearListRef = useRef(null);
+
+  /* ── recalculate popup position whenever it opens ── */
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPopupPos({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
 
   /* â”€â”€ sync when value prop changes â”€â”€ */
   useEffect(() => {
@@ -47,10 +63,12 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
     }
   }, [value]);
 
-  /* â”€â”€ close on outside click â”€â”€ */
+  /* ── close on outside click ── */
   useEffect(() => {
     const h = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) handleClose();
+      const insideTrigger = containerRef.current?.contains(e.target);
+      const insidePopup   = popupRef.current?.contains(e.target);
+      if (!insideTrigger && !insidePopup) handleClose();
     };
     if (isOpen) document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -117,8 +135,9 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
   return (
     <div className="relative" ref={containerRef}>
 
-      {/* â”€â”€ Trigger â”€â”€ */}
+      {/* ── Trigger ── */}
       <div
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 hover:border-gray-400 outline-none transition-all cursor-pointer flex items-center text-sm"
       >
@@ -128,11 +147,21 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
         </span>
       </div>
 
-      {/* â”€â”€ Popup â”€â”€ */}
-      {isOpen && (
-          <div className="absolute top-full left-0 mt-1.5 z-[9999] bg-white rounded-xl shadow-xl border border-gray-200 w-[310px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto">
+      {/* ── Popup via Portal (escapes any parent stacking context) ── */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: popupPos.top,
+            left: popupPos.left,
+            minWidth: Math.max(popupPos.width, 310),
+            zIndex: 99999,
+          }}
+          className="bg-white rounded-xl shadow-2xl border border-gray-200 w-[310px] max-h-[80vh] overflow-y-auto"
+        >
 
-            {/* â•â•â•â• YEAR PICKER â•â•â•â• */}
+            {/* â• â• â• â•  YEAR PICKER â• â• â• â•  */}
             {pickerMode === 'year' && (
               <div className="flex flex-col">
                 <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-gray-100">
@@ -324,7 +353,8 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
               </div>
             )}
 
-          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

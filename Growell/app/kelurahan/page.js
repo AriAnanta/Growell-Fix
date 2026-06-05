@@ -358,6 +358,11 @@ export default function KelurahanDashboard() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
+              onClick={() => router.push('/kelurahan/smart-reminder')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-brand-500/25 hover:opacity-90 transition-all">
+              <Bell size={15} /> Smart Reminder
+            </button>
+            <button
               onClick={() => router.push('/kelurahan/buat-akun')}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-violet-500/25 hover:opacity-90 transition-all">
               <UserPlus size={15} /> Kelola Akun Petugas
