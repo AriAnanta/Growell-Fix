@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbu",
+  "model_key": "XGB_Original",
+  "model_name": "XGB",
+  "resampling": "Original",
+  "metrics": {
+    "accuracy": 0.8977272727272727,
+    "precision_weighted": 0.8912337662337663,
+    "recall_weighted": 0.8977272727272727,
+    "f1_weighted": 0.8922742274227423,
+    "f1_macro": 0.7093069306930693
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbu__xgb__original.joblib"
+}

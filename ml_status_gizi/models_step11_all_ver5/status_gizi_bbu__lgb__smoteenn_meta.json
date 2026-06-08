@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbu",
+  "model_key": "LGB_SMOTEENN",
+  "model_name": "LGB",
+  "resampling": "SMOTEENN",
+  "metrics": {
+    "accuracy": 0.8068181818181818,
+    "precision_weighted": 0.8669308784408976,
+    "recall_weighted": 0.8068181818181818,
+    "f1_weighted": 0.8287662337662337,
+    "f1_macro": 0.5676190476190476
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbu__lgb__smoteenn.joblib"
+}

@@ -62,7 +62,8 @@ export async function POST(request) {
         COALESCE(p.nama, b.nama_posyandu) AS posyandu_nama,
         COALESCE(p.kecamatan, 'Astananyar') AS kecamatan,
         pk.tanggal_pengukuran, pk.berat_badan, pk.tinggi_badan, pk.lingkar_lengan,
-        pk.status_gizi_bbu, pk.status_gizi_tbu, pk.status_gizi_bbtb, pk.rekomendasi_utama
+        pk.status_gizi_bbu, pk.status_gizi_tbu, pk.status_gizi_bbtb, pk.rekomendasi_utama,
+        EXISTS(SELECT 1 FROM survey_balita sb WHERE sb.balita_id = b.id) AS has_survey
       FROM pengukuran pk
       JOIN balita b ON pk.balita_id = b.id
       LEFT JOIN posyandu p ON b.posyandu_id = p.id
@@ -220,9 +221,9 @@ async function generatePDF(filePath, data, summary, meta) {
         row.jenis_kelamin === 'Laki-Laki' ? 'L' : 'P',
         row.tanggal_pengukuran ? new Date(row.tanggal_pengukuran).toLocaleDateString('id-ID') : '-',
         row.berat_badan || '-', row.tinggi_badan || '-',
-        (row.status_gizi_bbtb || '-').substring(0, 12),
-        (row.status_gizi_tbu || '-').substring(0, 12),
-        (row.status_gizi_bbu || '-').substring(0, 20)
+        (row.status_gizi_bbtb || '-').substring(0, 15),
+        (row.status_gizi_tbu || '-').substring(0, 15),
+        (row.status_gizi_bbu || '-').substring(0, 25)
       ];
 
       // Use red for severe, dark for normal
@@ -328,12 +329,18 @@ async function generateExcel(filePath, data, summary, meta) {
     { header: 'Status BB/TB', key: 'bbtb', width: 15 },
     { header: 'Status TB/U', key: 'tbu', width: 14 },
     { header: 'Status BB/U', key: 'bbu', width: 24 },
-    { header: 'Rekomendasi', key: 'rek', width: 30 }
+    { header: 'Rekomendasi', key: 'rek', width: 30 },
+    { header: 'Status Rekomendasi', key: 'status_rek', width: 25 }
   ];
   detailSheet.getRow(1).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
   detailSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } };
 
   data.forEach((row, idx) => {
+    let statusRek = '-';
+    if (row.rekomendasi_utama) {
+      statusRek = row.has_survey == 1 ? '✨ Rekomendasi Final' : '⚠️ Belum final karena data orang tua belum ada';
+    }
+
     const r = detailSheet.addRow({
       no: idx + 1,
       nama: row.nama_balita,
@@ -347,7 +354,8 @@ async function generateExcel(filePath, data, summary, meta) {
       bbtb: row.status_gizi_bbtb || '-',
       tbu: row.status_gizi_tbu || '-',
       bbu: row.status_gizi_bbu || '-',
-      rek: row.rekomendasi_utama || '-'
+      rek: row.rekomendasi_utama || '-',
+      status_rek: statusRek
     });
 
     // Check abnormal status

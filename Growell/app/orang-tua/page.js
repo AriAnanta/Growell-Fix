@@ -111,11 +111,17 @@ function BalitaCard({ balita }) {
         {hasStatus ? (
           <div>
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Status Gizi Terbaru</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {balita.status_gizi_bbu  && <StatusBadge label={balita.status_gizi_bbu}  />}
               {balita.status_gizi_tbu  && <StatusBadge label={balita.status_gizi_tbu}  />}
               {balita.status_gizi_bbtb && <StatusBadge label={balita.status_gizi_bbtb} />}
             </div>
+            {balita.rekomendasi_intervensi && (
+              <div className="mt-3 bg-violet-50 rounded-xl p-3 border border-violet-100">
+                <p className="text-[10px] text-violet-500 font-bold uppercase tracking-wider mb-1">Rekomendasi Intervensi</p>
+                <p className="text-xs font-semibold text-violet-800 leading-snug">{balita.rekomendasi_intervensi}</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">

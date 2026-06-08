@@ -81,7 +81,9 @@ export async function GET(request) {
         latest.berat_badan AS berat_terakhir,
         latest.tinggi_badan AS tinggi_terakhir,
         latest.status_gizi_bbu, latest.status_gizi_tbu, latest.status_gizi_bbtb,
-        latest.tanggal_pengukuran AS pengukuran_terakhir
+        latest.rekomendasi_utama AS rekomendasi_intervensi,
+        latest.tanggal_pengukuran AS pengukuran_terakhir,
+        EXISTS(SELECT 1 FROM survey_balita sb WHERE sb.balita_id = b.id) AS has_survey
       FROM balita b
       LEFT JOIN posyandu p ON b.posyandu_id = p.id
       LEFT JOIN users u ON b.orang_tua_id = u.id

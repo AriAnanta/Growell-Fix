@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbtb",
+  "model_key": "XGB_SMOTETomek",
+  "model_name": "XGB",
+  "resampling": "SMOTETomek",
+  "metrics": {
+    "accuracy": 0.8863636363636364,
+    "precision_weighted": 0.8926541135120335,
+    "recall_weighted": 0.8863636363636364,
+    "f1_weighted": 0.8889839900644323,
+    "f1_macro": 0.6647520845741512
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbtb__xgb__smotetomek.joblib"
+}

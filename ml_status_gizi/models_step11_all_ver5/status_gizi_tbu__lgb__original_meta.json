@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_tbu",
+  "model_key": "LGB_Original",
+  "model_name": "LGB",
+  "resampling": "Original",
+  "metrics": {
+    "accuracy": 0.8806818181818182,
+    "precision_weighted": 0.9025750111957008,
+    "recall_weighted": 0.8806818181818182,
+    "f1_weighted": 0.8886601307189541,
+    "f1_macro": 0.5858496732026144
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_tbu__lgb__original.joblib"
+}

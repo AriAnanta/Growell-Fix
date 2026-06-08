@@ -417,78 +417,30 @@ function ParentFormPage() {
         throw new Error(d.error || `Gagal menyimpan data (HTTP ${res.status}). Coba lagi.`);
       }
 
-      // ── Show prediction result from selected balita's last measurement ──
-      if (selectedBalita.status_gizi_bbtb || selectedBalita.status_gizi_bbu || selectedBalita.status_gizi_tbu) {
-        setPredictionData({
-          bbtb: selectedBalita.status_gizi_bbtb || null,
-          bbu: selectedBalita.status_gizi_bbu || null,
-          tbu: selectedBalita.status_gizi_tbu || null,
-        });
-      }
-
-      // ── Call rekomendasi intervensi with full parent form data ──
+      // ── Call backend predict endpoint which uses the final ML recommendation model ──
       setIsUpdatingRek(true);
       try {
-        const mlUrl = process.env.NEXT_PUBLIC_ML_SERVICE_URL || 'http://localhost:8000';
-
-        // Map form long-text dropdown values to exact Python enum strings
-        const _mapPolaAsuh = (v) => {
-          if (!v) return 'Responsive feeding';
-          const l = v.toLowerCase();
-          if (l.includes('pemaksaan')) return 'Pemaksaan makan';
-          if (l.includes('dibiarkan')) return 'Dibiarkan makan sendiri';
-          return 'Responsive feeding';
-        };
-        const _mapSanitasi = (v) => {
-          if (!v) return 'Toilet dengan septic tank';
-          const l = v.toLowerCase();
-          if (l.includes('sungai') || l.includes('kebun') || l.includes('terbuka')) return 'Buang air di sungai/kebun';
-          if ((l.includes('tanpa') || l.includes('langsung')) && l.includes('selokan')) return 'Toilet tanpa septic tank (ke selokan)';
-          return 'Toilet dengan septic tank';
-        };
-
-        const rekPayload = {
-          usia_bulan: selectedBalita.tanggal_lahir
-            ? Math.floor((Date.now() - new Date(selectedBalita.tanggal_lahir).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
-            : 12,
-          berat_badan: 10, // Not in parent form; use placeholder
-          status_gizi_bb_tb: selectedBalita.status_gizi_bbtb || 'Gizi Baik',
-          status_gizi_tb_u: selectedBalita.status_gizi_tbu || 'Normal',
-          asi_eksklusif: formData.asiEksklusif === 'Ya',
-          konsumsi_protein_hewani: formData.mpasiHewani || 'Ya, setiap hari',
-          pola_asuh_makan: _mapPolaAsuh(formData.polaAsuh),
-          riwayat_sakit_2minggu: formData.sakit2Minggu === 'Ya',
-          jenis_sanitasi: _mapSanitasi(formData.sanitasi),
-          rutin_vitamin_a: !!formData.vitaminA,
-          rutin_posyandu: formData.rutinPosyandu === 'Rutin setiap bulan',
-        };
-
-        const rekRes = await fetch(`${mlUrl}/predict-rekomendasi`, {
+        const predictRes = await fetch('/api/predict', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(rekPayload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ balita_uuid: selectedBalita.uuid })
         });
 
-        if (rekRes.ok) {
-          const rekData = await rekRes.json();
-          setRekomendasiData(rekData);
-
-          // Save updated rekomendasi to database
-          await fetch('/api/pengukuran/update-rekomendasi', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              balita_uuid: selectedBalita.uuid,
-              rekomendasi_utama: rekData.rekomendasi_utama,
-              rekomendasi_tambahan: [
-                ...(rekData.rekomendasi_tambahan || []),
-              ],
-              catatan_rekomendasi: rekData.catatan || null,
-            }),
-          });
+        if (predictRes.ok) {
+          const predictData = await predictRes.json();
+          if (predictData.prediction) {
+            setPredictionData({
+              bbtb: predictData.prediction.bbtb || null,
+              bbu: predictData.prediction.bbu || null,
+              tbu: predictData.prediction.tbu || null,
+            });
+          }
+          if (predictData.rekomendasi) {
+            setRekomendasiData(predictData.rekomendasi);
+          }
         }
       } catch (rekErr) {
         console.warn('Rekomendasi update error (non-fatal):', rekErr);

@@ -77,6 +77,26 @@ export async function getInterventionRecommendation({
 }
 
 /**
+ * Get intervention recommendation from the new ML Recommendation model
+ */
+export async function getMLInterventionRecommendation(data) {
+  try {
+    // Determine the ML_REKOMENDASI_URL, fallback to localhost:8000 or same as ML_URL if not set
+    const recUrl = process.env.ML_REKOMENDASI_URL || 'http://localhost:8000';
+    const response = await axios.post(`${recUrl}/api/v1/predict`, data, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000,
+    });
+    return response.data;
+  } catch (err) {
+    console.error('ML Intervention recommendation failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Check ML service health
  */
 export async function checkMLHealth() {

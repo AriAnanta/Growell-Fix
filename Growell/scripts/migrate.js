@@ -365,9 +365,9 @@ const TABLES = [
 
   // ── Balita: rename nama_ibu → nama_orang_tua, drop nama_ayah ──
   `ALTER TABLE balita ADD COLUMN nama_orang_tua VARCHAR(100) NULL AFTER panjang_lahir`,
-  `UPDATE balita SET nama_orang_tua = COALESCE(nama_ibu, nama_ayah) WHERE nama_orang_tua IS NULL`,
-  `ALTER TABLE balita DROP COLUMN nama_ibu`,
-  `ALTER TABLE balita DROP COLUMN nama_ayah`
+  // `UPDATE balita SET nama_orang_tua = COALESCE(nama_ibu, nama_ayah) WHERE nama_orang_tua IS NULL`,
+  // `ALTER TABLE balita DROP COLUMN nama_ibu`,
+  // `ALTER TABLE balita DROP COLUMN nama_ayah`
 ];
 
 async function migrate() {

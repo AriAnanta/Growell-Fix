@@ -152,7 +152,7 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
         <div
           ref={popupRef}
           style={{
-            position: 'fixed',
+            position: 'absolute', // <--- SUDAH DIUBAH MENJADI ABSOLUTE
             top: popupPos.top,
             left: popupPos.left,
             minWidth: Math.max(popupPos.width, 310),

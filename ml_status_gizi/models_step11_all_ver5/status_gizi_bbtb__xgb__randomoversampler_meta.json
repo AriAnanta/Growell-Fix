@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbtb",
+  "model_key": "XGB_RandomOverSampler",
+  "model_name": "XGB",
+  "resampling": "RandomOverSampler",
+  "metrics": {
+    "accuracy": 0.9034090909090909,
+    "precision_weighted": 0.8887272041683807,
+    "recall_weighted": 0.9034090909090909,
+    "f1_weighted": 0.8950575560802833,
+    "f1_macro": 0.5791991341991343
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbtb__xgb__randomoversampler.joblib"
+}

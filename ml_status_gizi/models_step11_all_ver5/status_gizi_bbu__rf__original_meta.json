@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbu",
+  "model_key": "RF_Original",
+  "model_name": "RF",
+  "resampling": "Original",
+  "metrics": {
+    "accuracy": 0.8920454545454546,
+    "precision_weighted": 0.9072188930417249,
+    "recall_weighted": 0.8920454545454546,
+    "f1_weighted": 0.8970182488092792,
+    "f1_macro": 0.662935295955308
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbu__rf__original.joblib"
+}

@@ -239,6 +239,7 @@ export default function ListDataBalita() {
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status BB/TB</th>
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status BB/U</th>
                     <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status TB/U</th>
+                    <th className="text-left py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Rekomendasi Intervensi</th>
                     <th className="text-right py-3 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
@@ -264,6 +265,22 @@ export default function ListDataBalita() {
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbtb)}</td>
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbu)}</td>
                         <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_tbu)}</td>
+                        <td className="py-3.5 px-5 hidden lg:table-cell">
+                          {item.rekomendasi_intervensi ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm text-gray-700">{item.rekomendasi_intervensi}</span>
+                              {!item.has_survey ? (
+                                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md inline-block w-fit" title="Rekomendasi ini masih bersifat sementara karena data kuesioner dari orang tua belum diisi.">
+                                  ⚠️ Belum final karena data ortu belum ada
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-md inline-block w-fit" title="Rekomendasi final yang dihasilkan dari model Machine Learning.">
+                                  ✨ Intervensi final
+                                </span>
+                              )}
+                            </div>
+                          ) : '—'}
+                        </td>
                         <td className="py-3.5 px-5 text-right">
                           <div className="inline-flex items-center gap-1.5">
                             <button

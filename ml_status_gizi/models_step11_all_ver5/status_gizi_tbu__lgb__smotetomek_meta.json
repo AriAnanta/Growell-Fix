@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_tbu",
+  "model_key": "LGB_SMOTETomek",
+  "model_name": "LGB",
+  "resampling": "SMOTETomek",
+  "metrics": {
+    "accuracy": 0.8920454545454546,
+    "precision_weighted": 0.8968073593073593,
+    "recall_weighted": 0.8920454545454546,
+    "f1_weighted": 0.8927147079320992,
+    "f1_macro": 0.6376252028425942
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_tbu__lgb__smotetomek.joblib"
+}

@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbtb",
+  "model_key": "RF_SMOTETomek",
+  "model_name": "RF",
+  "resampling": "SMOTETomek",
+  "metrics": {
+    "accuracy": 0.8238636363636364,
+    "precision_weighted": 0.8674718174568653,
+    "recall_weighted": 0.8238636363636364,
+    "f1_weighted": 0.8391869357713759,
+    "f1_macro": 0.6034261016234451
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbtb__rf__smotetomek.joblib"
+}

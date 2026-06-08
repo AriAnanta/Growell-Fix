@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_tbu",
+  "model_key": "XGB_SMOTEENN",
+  "model_name": "XGB",
+  "resampling": "SMOTEENN",
+  "metrics": {
+    "accuracy": 0.8011363636363636,
+    "precision_weighted": 0.8846789467253178,
+    "recall_weighted": 0.8011363636363636,
+    "f1_weighted": 0.8276281437142092,
+    "f1_macro": 0.4398494265297544
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_tbu__xgb__smoteenn.joblib"
+}

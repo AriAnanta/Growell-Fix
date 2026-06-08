@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
-import { predictNutritionStatusTA, getInterventionRecommendation } from '@/lib/ml';
+import { predictNutritionStatusTA, getInterventionRecommendation, getMLInterventionRecommendation } from '@/lib/ml';
 
 /**
  * POST /api/predict
@@ -198,27 +198,69 @@ export async function POST(request) {
       let polaAsuh = survey.pola_asuh_makan || 'Responsive feeding';
 
       // Map sanitasi
-      let sanitasi = 'Toilet dengan septic tank';
+      let sanitasi = 'Toilet atau jamban dengan tangki penampung kotoran';
       const sanitasiVal = (survey.jenis_sanitasi || '').toLowerCase();
-      if (sanitasiVal.includes('selokan')) {
-        sanitasi = 'Toilet tanpa septic tank (ke selokan)';
-      } else if (sanitasiVal.includes('sungai') || sanitasiVal.includes('kebun')) {
-        sanitasi = 'Buang air di sungai/kebun';
+      if (sanitasiVal.includes('selokan') || sanitasiVal.includes('sungai') || sanitasiVal.includes('kebun') || sanitasiVal.includes('terbuka')) {
+        sanitasi = 'Toilet tanpa tangki, selokan, sungai, atau tempat terbuka';
       }
 
-      rekomendasi = await getInterventionRecommendation({
-        usiaBulan: ageMonths,
-        beratBadan: measurement.berat_badan,
-        statusGiziBBTB: bbtbMap[statusBBTB] || 'Gizi Baik',
-        statusGiziTBU: tbuMap[statusTBU] || 'Normal',
-        asiEksklusif: !!survey.is_asi_eksklusif,
-        konsumsiProtein: proteinHewani,
-        polaAsuh: polaAsuh,
-        riwayatSakit: !!survey.is_sakit_2_minggu,
-        jenisSanitasi: sanitasi,
-        rutinVitaminA: !!survey.terakhir_vitamin_a,
-        rutinPosyandu: survey.frekuensi_posyandu_bulan > 0,
+      // Hit new ML Intervention Recommendation Model
+      let trenBB = 'Tetap';
+      if (measurement.kondisi_bb_bulan_lalu === 'Naik') trenBB = 'Naik';
+      if (measurement.kondisi_bb_bulan_lalu === 'Turun') trenBB = 'Turun';
+
+      const mlRekData = await getMLInterventionRecommendation({
+        status_gizi_tbu: tbuMap[statusTBU] || 'Normal',
+        status_gizi_bbtb: bbtbMap[statusBBTB] || 'Gizi Baik',
+        status_gizi_bbu: statusBBU || 'Berat Badan Normal',
+        is_pernah_pmt: survey.is_pernah_pmt ? 'Ya' : 'Tidak',
+        umur_balita: ageMonths,
+        is_asi_eksklusif: survey.is_asi_eksklusif ? 'Ya' : 'Tidak',
+        is_mpasi_hewani: survey.is_mpasi_hewani ? 'Ya, setiap hari' : 'Tidak pernah',
+        jenis_sanitasi: sanitasi,
+        kebiasaan_cuci_tangan: survey.kebiasaan_cuci_tangan || 'Selalu',
+        is_sakit_2_minggu: survey.is_sakit_2_minggu ? 'Ya' : 'Tidak',
+        tinggi_badan_cm: measurement.tinggi_badan,
+        berat_badan_kg: measurement.berat_badan,
+        lila_cm: measurement.lingkar_lengan || 13.5,
+        lingkar_kepala_cm: measurement.lingkar_kepala || 47.0,
+        tren_bb_bulan_lalu: trenBB,
+        jenis_kelamin: balita.jenis_kelamin || 'Laki-laki',
+        usia_kehamilan_lahir: survey.usia_kehamilan_lahir || 9,
+        berat_lahir_kg: balita.berat_lahir || 3.0,
+        panjang_lahir_cm: balita.panjang_lahir || 49.0,
       });
+
+      if (mlRekData) {
+        rekomendasi = {
+          rekomendasi_utama: mlRekData.rekomendasi,
+          rekomendasi_tambahan: [],
+          catatan: `Confidence: ${Math.round(mlRekData.confidence * 100)}%`
+        };
+        // Add other high probability interventions as tambahan
+        if (mlRekData.all_probabilities) {
+          for (const [rec, prob] of Object.entries(mlRekData.all_probabilities)) {
+            if (rec !== mlRekData.rekomendasi && prob > 0.15) {
+              rekomendasi.rekomendasi_tambahan.push(rec);
+            }
+          }
+        }
+      } else {
+        // Fallback if the new ML service fails
+        rekomendasi = await getInterventionRecommendation({
+          usiaBulan: ageMonths,
+          beratBadan: measurement.berat_badan,
+          statusGiziBBTB: bbtbMap[statusBBTB] || 'Gizi Baik',
+          statusGiziTBU: tbuMap[statusTBU] || 'Normal',
+          asiEksklusif: !!survey.is_asi_eksklusif,
+          konsumsiProtein: proteinHewani,
+          polaAsuh: polaAsuh,
+          riwayatSakit: !!survey.is_sakit_2_minggu,
+          jenisSanitasi: sanitasi,
+          rutinVitaminA: !!survey.terakhir_vitamin_a,
+          rutinPosyandu: survey.frekuensi_posyandu_bulan > 0,
+        });
+      }
     } catch (rekErr) {
       console.error('Intervention recommendation error:', rekErr);
     }

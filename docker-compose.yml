@@ -28,7 +28,7 @@ services:
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   # ================================
-  # ML Service (FastAPI + Python)
+  # ML Service 
   # ================================
   ml:
     build:
@@ -45,6 +45,34 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - growell-network
+
+  # ================================
+  # ML Service Prediksi Status Gizi (LightGBM)
+  # ================================
+  ml-status-gizi:
+    build:
+      context: ./ml_status_gizi
+      dockerfile: Dockerfile
+    container_name: growell-ml-status-gizi
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    networks:
+      - growell-network
+
+  # ================================
+  # ML Service Rekomendasi Gizi (XGBoost)
+  # ================================
+  ml-rekomendasi:
+    build:
+      context: ./ml_rekomendasi
+      dockerfile: Dockerfile
+    container_name: growell-ml-rekomendasi
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
     networks:
       - growell-network
 

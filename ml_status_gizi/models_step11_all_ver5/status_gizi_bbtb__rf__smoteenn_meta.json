@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbtb",
+  "model_key": "RF_SMOTEENN",
+  "model_name": "RF",
+  "resampling": "SMOTEENN",
+  "metrics": {
+    "accuracy": 0.7840909090909091,
+    "precision_weighted": 0.8668261997149191,
+    "recall_weighted": 0.7840909090909091,
+    "f1_weighted": 0.8101981351981352,
+    "f1_macro": 0.6368589743589744
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbtb__rf__smoteenn.joblib"
+}

@@ -1,0 +1,14 @@
+{
+  "target": "status_gizi_bbu",
+  "model_key": "RF_RandomOverSampler",
+  "model_name": "RF",
+  "resampling": "RandomOverSampler",
+  "metrics": {
+    "accuracy": 0.8806818181818182,
+    "precision_weighted": 0.9021915584415585,
+    "recall_weighted": 0.8806818181818182,
+    "f1_weighted": 0.8877423952608247,
+    "f1_macro": 0.6497130821638119
+  },
+  "model_path": "models_step11_all_ver5\\status_gizi_bbu__rf__randomoversampler.joblib"
+}
