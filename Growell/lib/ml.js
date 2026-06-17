@@ -107,3 +107,151 @@ export async function checkMLHealth() {
     return { status: 'error', message: err.message };
   }
 }
+
+// ── Forecasting (Growth Projection t+1..t+6) ──
+const FORECAST_URL = process.env.ML_FORECASTING_URL || 'http://localhost:8003';
+const FORECAST_API_KEY = process.env.ML_FORECASTING_API_KEY || 'growell123';
+
+const forecastClient = axios.create({
+  baseURL: FORECAST_URL,
+  headers: { 'Content-Type': 'application/json', 'x-api-key': FORECAST_API_KEY },
+  timeout: 30000,
+});
+
+export async function predictForecast(features) {
+  try {
+    const response = await forecastClient.post('/forecast', features);
+    return response.data;
+  } catch (err) {
+    console.error('Forecast prediction failed:', err.message);
+    return null;
+  }
+}
+
+export async function getZScore({ berat, tinggi, usia_bulan, jenis_kelamin }) {
+  try {
+    const response = await forecastClient.post('/zscore', {
+      berat, tinggi, usia_bulan, jenis_kelamin,
+    });
+    return response.data;
+  } catch (err) {
+    console.error('Z-score calculation failed:', err.message);
+    return null;
+  }
+}
+
+export async function checkForecastHealth() {
+  try {
+    const response = await forecastClient.get('/health');
+    return response.data;
+  } catch (err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+// ── Shared helper: build forecast from measurement history ──
+/**
+ * @param {{tanggal_lahir: string|Date, jenis_kelamin: string}} balita
+ * @param {Array} measurements - sorted DESC by tanggal_pengukuran, each item:
+ *   { tanggal_pengukuran, berat_badan, tinggi_badan, zs_bb_u, zs_tb_u, zs_bb_tb }
+ */
+export async function buildForecastFromHistory(balita, measurements) {
+  if (!measurements || measurements.length < 4) {
+    return {
+      eligible: false,
+      message: `Data pengukuran belum cukup. Forecasting membutuhkan minimal 4 kali pengukuran (saat ini: ${measurements?.length || 0}).`,
+      jumlah_pengukuran: measurements?.length || 0,
+    };
+  }
+
+  const [t0, t1, t2, t3] = measurements;
+
+  const birthDate = new Date(balita.tanggal_lahir);
+  const t0Date = new Date(t0.tanggal_pengukuran);
+  const usiaBulan = Math.floor((t0Date - birthDate) / (1000 * 60 * 60 * 24 * 30.44));
+
+  const t1Date = new Date(t1.tanggal_pengukuran);
+  const usiaBulanT1 = Math.floor((t1Date - birthDate) / (1000 * 60 * 60 * 24 * 30.44));
+
+  const jk = (balita.jenis_kelamin || '').toLowerCase().startsWith('l') ? 0 : 1;
+
+  const bb_t1 = t1.berat_badan;
+  const bb_t2 = t2.berat_badan;
+  const bb_t3 = t3.berat_badan;
+  const tb_t1 = t1.tinggi_badan;
+  const tb_t2 = t2.tinggi_badan;
+  const tb_t3 = t3.tinggi_badan;
+
+  const delta_bb = t0.berat_badan - bb_t1;
+  const delta_tb = t0.tinggi_badan - tb_t1;
+  const delta_bb_t1 = bb_t1 - bb_t2;
+  const delta_tb_t1 = tb_t1 - tb_t2;
+  const accel_bb = delta_bb - delta_bb_t1;
+  const accel_tb = delta_tb - delta_tb_t1;
+
+  let zs_bbu = t0.zs_bb_u;
+  let zs_tbu = t0.zs_tb_u;
+  let zs_bbtb = t0.zs_bb_tb;
+
+  if (zs_bbu == null || zs_tbu == null || zs_bbtb == null) {
+    const z0 = await getZScore({
+      berat: t0.berat_badan,
+      tinggi: t0.tinggi_badan,
+      usia_bulan: usiaBulan,
+      jenis_kelamin: balita.jenis_kelamin,
+    });
+    if (z0) {
+      zs_bbu = zs_bbu ?? z0.zs_bb_u;
+      zs_tbu = zs_tbu ?? z0.zs_tb_u;
+      zs_bbtb = zs_bbtb ?? z0.zs_bb_tb;
+    }
+  }
+
+  let zs_bbu_t1 = t1.zs_bb_u;
+  let zs_tbu_t1 = t1.zs_tb_u;
+
+  if (zs_bbu_t1 == null || zs_tbu_t1 == null) {
+    const z1 = await getZScore({
+      berat: t1.berat_badan,
+      tinggi: t1.tinggi_badan,
+      usia_bulan: usiaBulanT1,
+      jenis_kelamin: balita.jenis_kelamin,
+    });
+    if (z1) {
+      zs_bbu_t1 = zs_bbu_t1 ?? z1.zs_bb_u;
+      zs_tbu_t1 = zs_tbu_t1 ?? z1.zs_tb_u;
+    }
+  }
+
+  zs_bbu = zs_bbu ?? 0;
+  zs_tbu = zs_tbu ?? 0;
+  zs_bbtb = zs_bbtb ?? 0;
+  zs_bbu_t1 = zs_bbu_t1 ?? 0;
+  zs_tbu_t1 = zs_tbu_t1 ?? 0;
+
+  const features = {
+    usia_bulan: usiaBulan,
+    jk,
+    berat: t0.berat_badan,
+    tinggi: t0.tinggi_badan,
+    bb_t1, bb_t2, bb_t3,
+    tb_t1, tb_t2, tb_t3,
+    delta_bb, delta_tb,
+    delta_bb_t1, delta_tb_t1,
+    accel_bb, accel_tb,
+    zs_bbu, zs_tbu, zs_bbtb,
+    zs_bbu_t1, zs_tbu_t1,
+  };
+
+  const forecastResult = await predictForecast(features);
+  if (!forecastResult) {
+    return { eligible: false, message: 'Gagal melakukan forecasting.', jumlah_pengukuran: measurements.length };
+  }
+
+  return {
+    eligible: true,
+    tanggal_acuan: t0.tanggal_pengukuran,
+    usia_bulan: usiaBulan,
+    ...forecastResult,
+  };
+}
