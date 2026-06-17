@@ -77,6 +77,27 @@ services:
       - growell-network
 
   # ================================
+  # ML Service Forecasting (Random Forest + XGBoost)
+  # ================================
+  ml-forecasting:
+    build:
+      context: ./ml_forecasting
+      dockerfile: Dockerfile
+    container_name: growell-ml-forecasting
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - API_KEY=growell123
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - growell-network
+
+  # ================================
   # phpMyAdmin
   # ================================
   phpmyadmin:
@@ -123,6 +144,8 @@ services:
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - NEXT_PUBLIC_ML_SERVICE_URL=${NEXT_PUBLIC_ML_SERVICE_URL:-http://localhost:8000}
       - UPLOAD_DIR=./uploads
+      - ML_FORECASTING_URL=http://ml-forecasting:8003
+      - ML_FORECASTING_API_KEY=growell123
     depends_on:
       db:
         condition: service_healthy

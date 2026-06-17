@@ -5,8 +5,10 @@ import Link from 'next/link';
 import {
   User, Save, RefreshCw, AlertCircle, CheckCircle2, TrendingUp, Users, Calendar,
   Search, Plus, FileText, BarChart3, ChevronDown, LogOut, ArrowRight, Clock,
-  Loader2, Info, ClipboardList, Sparkles, Copy, Check, Link2, Settings2, Pencil, X
+  Loader2, Info, ClipboardList, Sparkles, Copy, Check, Link2, Settings2, Pencil, X,
+  LineChart as LineChartIcon
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import SuccessModal from '@/components/common/SuccessModal';
@@ -53,6 +55,11 @@ function KaderDashboard() {
   const [rekomendasiResult, setRekomendasiResult] = useState(null);
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictError, setPredictError] = useState('');
+
+  // Forecasting
+  const [forecastResult, setForecastResult] = useState(null);
+  const [isForecasting, setIsForecasting] = useState(false);
+  const [forecastError, setForecastError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -558,6 +565,8 @@ function KaderDashboard() {
     setFormData(emptyForm);
     setPredictionResult(null);
     setRekomendasiResult(null);
+    setForecastResult(null);
+    setForecastError('');
     setPredictError('');
     setFormErrors({});
     setLinkCode('');
@@ -644,6 +653,7 @@ function KaderDashboard() {
         setDataSaved(true);
         setShowSuccessModal(true);
         toast.success('Data Berhasil Diperbarui!', `Data ${formData.namaBalita || 'balita'} telah diperbarui.`);
+        fetchForecast(editBalitaUuid);
       } catch (err) {
         toast.error('Gagal Memperbarui', err.message);
       } finally {
@@ -689,6 +699,7 @@ function KaderDashboard() {
       const savedData = await res.json();
       setDataSaved(true);
       setShowSuccessModal(true);
+      fetchForecast(savedData.balita.uuid);
       // Show context: new child vs returning child
       if (!savedData.is_new_balita) {
         toast.info('Data Pengukuran Ditambahkan', `Pengukuran baru untuk "${formData.namaBalita}" berhasil disimpan. Anak ini sudah terdaftar sebelumnya.`);
@@ -701,11 +712,32 @@ function KaderDashboard() {
       setIsSaving(false);
     }
   };
+  
+  const fetchForecast = async (balitaUuid) => {
+    if (!balitaUuid) return;
+    setIsForecasting(true);
+    setForecastError('');
+    try {
+      const res = await apiFetch(`/api/forecast?balita_uuid=${balitaUuid}`);
+      if (res.ok) {
+        const data = await res.json();
+        setForecastResult(data);
+      } else {
+        setForecastError('Gagal memuat proyeksi pertumbuhan.');
+      }
+    } catch (e) {
+      console.error('Forecast error:', e);
+      setForecastError('Gagal memuat proyeksi pertumbuhan.');
+    } finally {
+      setIsForecasting(false);
+    }
+  };
+
   const handleCloseModal = () => {
     setShowSuccessModal(false);
     if (editMode) {
-      // After editing, go back to the data list
-      router.push('/data-balita');
+      // Stay on result tab so the user can see the forecast chart.
+      // Navigation to /data-balita is handled by the "Kembali ke Daftar" button.
     } else {
       handleReset();
       setActiveTab('input');
@@ -723,8 +755,13 @@ function KaderDashboard() {
     return 'bg-gray-100 text-gray-600';
   };
 
-  const inputClass = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-gray-900 focus:ring-2 focus:ring-gray-900/5 outline-none transition-all text-gray-900 text-sm placeholder:text-gray-400";
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
 
+  const inputClass = "w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-gray-900 focus:ring-2 focus:ring-gray-900/5 outline-none transition-all text-gray-900 text-sm placeholder:text-gray-400";
   // ──────────────────── RENDER ────────────────────
   return (
     <div className="min-h-screen bg-[#fafafa] page-enter bg-orbs mesh-bg relative">
@@ -1126,6 +1163,94 @@ function KaderDashboard() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    )}
+
+                    {/* ─── Section: Proyeksi Pertumbuhan 6 Bulan ─── */}
+                    {(isForecasting || forecastResult || forecastError) && (
+                      <div>
+                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                          <LineChartIcon size={14} className="text-sky-500" /> Proyeksi Pertumbuhan 6 Bulan
+                        </h3>
+
+                        {isForecasting && (
+                          <div className="flex items-center justify-center py-10 text-gray-400">
+                            <Loader2 size={20} className="animate-spin mr-2" /> Menghitung proyeksi pertumbuhan...
+                          </div>
+                        )}
+
+                        {!isForecasting && forecastError && (
+                          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm font-medium flex items-start gap-2">
+                            <AlertCircle size={16} className="mt-0.5 flex-shrink-0" /> {forecastError}
+                          </div>
+                        )}
+
+                        {!isForecasting && forecastResult && forecastResult.eligible === false && (
+                          <div className="bg-sky-50 border border-sky-200 text-sky-700 rounded-xl p-4 text-sm font-medium flex items-start gap-2">
+                            <Info size={16} className="mt-0.5 flex-shrink-0" />
+                            <div>
+                              {forecastResult.message || 'Data pengukuran belum cukup untuk membuat proyeksi pertumbuhan.'}
+                              <p className="text-xs text-sky-500 mt-1">
+                                Proyeksi membutuhkan minimal 4 kali pengukuran ({forecastResult.jumlah_pengukuran ?? 0}/4 saat ini).
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {!isForecasting && forecastResult && forecastResult.eligible && (
+                          <div className="bg-gradient-to-br from-sky-50 to-teal-50 border border-sky-200 rounded-2xl p-5 sm:p-6">
+                            <p className="text-xs text-sky-500 mb-4">
+                              Proyeksi berdasarkan data pengukuran terakhir ({new Date(forecastResult.tanggal_acuan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}), usia {forecastResult.usia_bulan} bulan.
+                            </p>
+
+                            <div className="h-[280px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                {(() => {
+                                  const histAsc = (forecastResult.riwayat || []).map((h, idx, arr) => {
+                                    const isLast = idx === arr.length - 1;
+                                    return {
+                                      tanggal: h.tanggal_pengukuran,
+                                      berat_badan: h.berat_badan,
+                                      tinggi_badan: h.tinggi_badan,
+                                      berat_proyeksi: isLast ? h.berat_badan : null,
+                                      tinggi_proyeksi: isLast ? h.tinggi_badan : null,
+                                    };
+                                  });
+
+                                  const baseDate = new Date(forecastResult.tanggal_acuan);
+                                  const forecastPoints = forecastResult.prediksi.map((p, idx) => {
+                                    const d = new Date(baseDate);
+                                    d.setMonth(d.getMonth() + (idx + 1));
+                                    return {
+                                      tanggal: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                                      berat_badan: null,
+                                      tinggi_badan: null,
+                                      berat_proyeksi: p.bb,
+                                      tinggi_proyeksi: p.tb,
+                                    };
+                                  });
+
+                                  const chartData = [...histAsc, ...forecastPoints];
+
+                                  return (
+                                    <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                      <XAxis dataKey="tanggal" tickFormatter={formatDate} stroke="#94a3b8" fontSize={11} tickMargin={8} />
+                                      <YAxis yAxisId="left" stroke="#14b8a6" fontSize={11} tickFormatter={(v) => `${v}kg`} />
+                                      <YAxis yAxisId="right" orientation="right" stroke="#818cf8" fontSize={11} tickFormatter={(v) => `${v}cm`} />
+                                      <Tooltip labelFormatter={formatDate} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} />
+                                      <Legend wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                                      <Line yAxisId="left" type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
+                                      <Line yAxisId="right" type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
+                                      <Line yAxisId="left" type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
+                                      <Line yAxisId="right" type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
+                                    </LineChart>
+                                  );
+                                })()}
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

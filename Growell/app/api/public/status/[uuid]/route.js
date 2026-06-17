@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { buildForecastFromHistory } from '@/lib/ml';
 
 /**
  * GET /api/public/status/[uuid]
@@ -38,7 +39,7 @@ export async function GET(request, { params }) {
 
         // Get measurement history (limited data)
         const [measurements] = await pool.query(
-            `SELECT 
+            `SELECT
          tanggal_pengukuran,
          berat_badan,
          tinggi_badan,
@@ -46,7 +47,10 @@ export async function GET(request, { params }) {
          status_gizi_bbu,
          status_gizi_tbu,
          rekomendasi_utama,
-         catatan
+         catatan,
+         zs_bb_u,
+         zs_tb_u,
+         zs_bb_tb
        FROM pengukuran 
        WHERE balita_id = (SELECT id FROM balita WHERE uuid = ?)
        ORDER BY tanggal_pengukuran DESC`,
@@ -79,9 +83,12 @@ export async function GET(request, { params }) {
             catatan: m.catatan || '',
         }));
 
+        const forecast = await buildForecastFromHistory(balita, measurements);
+
         return NextResponse.json({
             data: formattedBalita,
-            history: formattedMeasurements
+            history: formattedMeasurements,
+            forecast,
         });
 
     } catch (err) {
