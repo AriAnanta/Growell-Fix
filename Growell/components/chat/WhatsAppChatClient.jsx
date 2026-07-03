@@ -450,7 +450,10 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
                         >
                           <Trash2 size={14} />
                         </button>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">{c.updated_at ? new Date(c.updated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">{(c.lastMessageTime || c.updated_at) ? (() => {
+                          const d = new Date(c.lastMessageTime || c.updated_at);
+                          return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                        })() : ''}</span>
                       </div>
                     </div>
                     
@@ -608,8 +611,11 @@ export default function WhatsAppChatClient({ initialUuid = null }) {
                           )}
                           <span className="whitespace-pre-wrap block min-w-0 break-words [word-break:break-word]">{msg.pesan}</span>
                           <div className="float-right ml-3 mt-1.5 text-[10px] text-gray-500 flex items-center gap-1">
-                            {msg.is_edited && <span className="italic opacity-70">diedit</span>}
-                            {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            {Boolean(msg.is_edited) && <span className="italic opacity-70">diedit</span>}
+                            {(() => {
+                              const d = new Date(msg.created_at);
+                              return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                            })()}
                             {isMe && <CheckCircle2 size={12} className="text-blue-500 ml-0.5" />}
                           </div>
                           <div className="clear-both"></div>

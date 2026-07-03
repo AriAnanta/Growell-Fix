@@ -487,11 +487,11 @@ function ParentFormPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <Link href="/orang-tua" className="p-2 -ml-2 hover:bg-gray-100 rounded-xl transition-colors">
                 <ArrowLeft size={20} className="text-gray-500" />
               </Link>
               <div className="h-5 w-px bg-gray-200" />
-              <Link href="/" className="flex items-center gap-2.5 hover:opacity-70 transition-opacity">
+              <Link href="/orang-tua" className="flex items-center gap-2.5 hover:opacity-70 transition-opacity">
                 <img src="/growell-logo.png" alt="Growell" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="font-semibold text-gray-900 text-sm tracking-tight">Kuesioner Orang Tua</span>
               </Link>
@@ -630,7 +630,7 @@ function ParentFormPage() {
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button onClick={handleReset} className="px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition">Isi Untuk Anak Lain</button>
-              <Link href="/" className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition text-center">Kembali ke Beranda</Link>
+              <Link href="/orang-tua" className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition text-center">Kembali ke Dasbor</Link>
             </div>
           </div>
         ) : (

@@ -6,11 +6,12 @@ import {
   ClipboardList, MessageCircle, LogOut, User, ChevronDown, Utensils,
   HeartPulse, Baby, ChevronRight, Sparkles, Loader2, AlertTriangle,
   Scale, Ruler, Calendar, Search, X, CheckCircle2, LinkIcon, AlertCircle,
-  PlusCircle,
+  PlusCircle, BookOpen, ExternalLink, Bell, MapPin, Clock, Info,
 } from 'lucide-react';
 import { isAuthenticated, getUserData, clearAuth } from '@/utils/auth';
 import AppNavbar from '@/components/common/AppNavbar';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
+import CustomDropdown from '@/components/forms/CustomDropdown';
 
 // ── Status Gizi badge ─────────────────────────────────────────────────────────
 function StatusBadge({ label }) {
@@ -343,6 +344,16 @@ export default function OrangTuaDashboard() {
   const [balitaList, setBalitaList] = useState([]);
   const [balitaLoading, setBalitaLoading] = useState(true);
   const [showKlaimModal, setShowKlaimModal] = useState(false);
+  const [showTambahModal, setShowTambahModal] = useState(false);
+  const [unreadKonsultasi, setUnreadKonsultasi] = useState(0);
+
+  const [articles, setArticles] = useState([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+
+  const [jadwalPosyandu, setJadwalPosyandu] = useState([]);
+  const [jadwalLoading, setJadwalLoading] = useState(true);
+  const [subscribedPosyandus, setSubscribedPosyandus] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(null);
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -371,7 +382,93 @@ export default function OrangTuaDashboard() {
     }
   };
 
-  useEffect(() => { if (userData) fetchBalita(); }, [userData]);
+  const fetchArticles = async () => {
+    try {
+      const res = await fetch('/api/artikel');
+      if (res.ok) {
+        const json = await res.json();
+        setArticles(json.data?.slice(0, 3) || []); // Ambil 3 aja buat dashboard
+      }
+    } catch (e) {
+      console.error('Fetch articles error:', e);
+    } finally {
+      setArticlesLoading(false);
+    }
+  };
+
+  useEffect(() => { 
+    if (userData) {
+      fetchBalita();
+      fetchKonsultasi();
+      fetchArticles();
+      fetchJadwal();
+    }
+  }, [userData]);
+
+  const fetchJadwal = async () => {
+    setJadwalLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('/api/orang-tua/jadwal', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setJadwalPosyandu(json.data || []);
+        setSubscribedPosyandus(json.subscribed_posyandus || []);
+      }
+    } catch (e) {
+      console.error('Fetch jadwal error:', e);
+    } finally {
+      setJadwalLoading(false);
+    }
+  };
+
+  const toggleNotifPosyandu = async (posyanduId) => {
+    setNotifLoading(posyanduId);
+    const isSubscribed = subscribedPosyandus.includes(posyanduId);
+    const action = isSubscribed ? 'remove' : 'add';
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('/api/orang-tua/jadwal', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ posyandu_id: posyanduId, action }),
+      });
+      if (res.ok) {
+        if (action === 'add') {
+          setSubscribedPosyandus([...subscribedPosyandus, posyanduId]);
+        } else {
+          setSubscribedPosyandus(subscribedPosyandus.filter(id => id !== posyanduId));
+        }
+      }
+    } catch (e) {
+      console.error('Toggle notif error:', e);
+    } finally {
+      setNotifLoading(null);
+    }
+  };
+
+  const fetchKonsultasi = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('/api/konsultasi?status=aktif', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const activeCons = json.data || [];
+        const totalUnread = activeCons.reduce((sum, item) => sum + (item.unread_count || 0), 0);
+        setUnreadKonsultasi(totalUnread);
+      }
+    } catch (e) {
+      console.error('Fetch konsultasi error:', e);
+    }
+  };
 
   // ── Profile dropdown outside click ───────────────────────────────────────
   useEffect(() => {
@@ -408,6 +505,16 @@ export default function OrangTuaDashboard() {
         <KlaimModal
           onClose={() => setShowKlaimModal(false)}
           onSuccess={handleKlaimSuccess}
+        />
+      )}
+
+      {showTambahModal && (
+        <TambahAnakModal 
+          onClose={() => setShowTambahModal(false)}
+          onSuccess={() => {
+            setShowTambahModal(false);
+            fetchBalita();
+          }}
         />
       )}
 
@@ -467,12 +574,20 @@ export default function OrangTuaDashboard() {
               <p className="text-xs text-gray-400 mt-0.5">Data balita yang terhubung ke akun Anda</p>
             </div>
             {balitaList.length > 0 && (
-              <button
-                onClick={() => setShowKlaimModal(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl transition-all"
-              >
-                <PlusCircle size={14} /> Tambah Anak
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTambahModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl transition-all"
+                >
+                  <PlusCircle size={14} /> Anak Baru
+                </button>
+                <button
+                  onClick={() => setShowKlaimModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl transition-all"
+                >
+                  <LinkIcon size={14} /> Klaim Anak
+                </button>
+              </div>
             )}
           </div>
 
@@ -509,7 +624,7 @@ export default function OrangTuaDashboard() {
                     <div className="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-bold">A</span>
                     </div>
-                    <p className="text-sm font-bold text-teal-800">Data sudah ada di Posyandu</p>
+                    <p className="text-sm font-bold text-teal-800">Hubungkan data dari Posyandu</p>
                   </div>
                   <p className="text-xs text-teal-600 mb-3 pl-8">
                     Jika kader sudah menginput data anak Anda sebelumnya, hubungkan langsung tanpa perlu isi ulang.
@@ -518,7 +633,7 @@ export default function OrangTuaDashboard() {
                     onClick={() => setShowKlaimModal(true)}
                     className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-sky-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                   >
-                    <LinkIcon size={15} /> Temukan & Hubungkan Data Anak
+                    <LinkIcon size={15} /> Klaim Data Anak
                   </button>
                 </div>
 
@@ -529,25 +644,94 @@ export default function OrangTuaDashboard() {
                   <div className="flex-1 border-t border-gray-200" />
                 </div>
 
-                {/* Option B: Kuesioner */}
+                {/* Option B: Tambah Anak */}
                 <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-bold">B</span>
                     </div>
-                    <p className="text-sm font-bold text-gray-800">Daftar sebagai pengguna baru</p>
+                    <p className="text-sm font-bold text-gray-800">Daftarkan anak baru</p>
                   </div>
                   <p className="text-xs text-gray-500 mb-3 pl-8">
-                    Isi kuesioner lengkap untuk mendaftarkan anak Anda dan mendapatkan prediksi status gizi.
+                    Jika anak Anda belum pernah didata di Posyandu manapun, Anda bisa membuat profilnya sendiri.
                   </p>
-                  <Link
-                    href="/orang-tua/kuesioner"
+                  <button
+                    onClick={() => setShowTambahModal(true)}
                     className="w-full py-2.5 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 hover:shadow-md"
                   >
-                    <Sparkles size={15} className="text-teal-500" /> Isi Kuesioner Baru
-                  </Link>
+                    <PlusCircle size={15} className="text-teal-500" /> Tambah Anak Baru
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── JADWAL POSYANDU SECTION ──────────────────────────────────────────────── */}
+        <div className="mb-10 section-appear section-appear-delay-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Jadwal Posyandu Terdekat</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Pilih posyandu (🔔) untuk memantau dan mendapatkan pengingat H-1</p>
+            </div>
+          </div>
+
+          {/* Loading */}
+          {jadwalLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="text-teal-500 animate-spin" />
+            </div>
+          )}
+
+          {/* Jadwal Grid */}
+          {!jadwalLoading && jadwalPosyandu.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {jadwalPosyandu.map((jadwal) => {
+                const isSubscribed = subscribedPosyandus.includes(jadwal.posyandu_id);
+                return (
+                <div key={jadwal.uuid} className={`bg-white rounded-2xl p-5 shadow-sm hover:-translate-y-1 transition-all duration-300 relative border-2 ${isSubscribed ? 'border-teal-400 shadow-teal-500/20' : 'border-gray-100 hover:shadow-xl'}`}>
+                  <button 
+                    onClick={() => toggleNotifPosyandu(jadwal.posyandu_id)}
+                    disabled={notifLoading === jadwal.posyandu_id}
+                    title={isSubscribed ? 'Matikan Notifikasi' : 'Nyalakan Notifikasi'}
+                    className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isSubscribed ? 'bg-teal-500 text-white shadow-md shadow-teal-500/30' : 'bg-gray-100 text-gray-400 hover:bg-teal-50 hover:text-teal-500'} ${notifLoading === jadwal.posyandu_id ? 'opacity-50 cursor-not-allowed animate-pulse' : ''}`}
+                  >
+                    <Bell size={14} className={isSubscribed ? 'fill-current' : ''} />
+                  </button>
+                  <div className="flex items-start gap-4 mt-1">
+                    <div className="w-12 h-12 bg-teal-50 rounded-xl flex flex-col items-center justify-center flex-shrink-0 border border-teal-100">
+                      <span className="text-xs font-semibold text-teal-600 uppercase">
+                        {new Date(jadwal.tanggal).toLocaleString('id-ID', { month: 'short' })}
+                      </span>
+                      <span className="text-lg font-bold text-teal-700 leading-none mt-0.5">
+                        {new Date(jadwal.tanggal).getDate()}
+                      </span>
+                    </div>
+                    <div className="pr-6">
+                      <h3 className="font-bold text-gray-900 text-sm mb-1">{jadwal.posyandu_nama}</h3>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                        <Clock size={12} />
+                        <span>{jadwal.waktu_mulai ? jadwal.waktu_mulai.substring(0, 5) : '-'} - {jadwal.waktu_selesai ? jadwal.waktu_selesai.substring(0, 5) : 'Selesai'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <Info size={12} />
+                        <span className="line-clamp-1">{jadwal.kegiatan || 'Penimbangan rutin'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )})}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!jadwalLoading && jadwalPosyandu.length === 0 && (
+            <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-8 text-center flex flex-col items-center">
+              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                <Calendar size={20} className="text-gray-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">Belum ada jadwal terdekat</p>
+              <p className="text-xs text-gray-400 mt-1">Jadwal posyandu untuk anak Anda belum tersedia bulan ini.</p>
             </div>
           )}
         </div>
@@ -572,8 +756,15 @@ export default function OrangTuaDashboard() {
           <Link href="/konsultasi"
             className="group card-3d card-shine bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-sm hover:shadow-2xl hover:border-emerald-200 hover:-translate-y-2 transition-all duration-500 relative overflow-hidden">
             <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-50 rounded-full blur-2xl group-hover:bg-emerald-100 transition-colors" />
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/20 relative z-10 group-hover:scale-105 transition-transform">
-              <MessageCircle className="text-white" size={22} />
+            <div className="relative inline-block mb-5 z-10 group-hover:scale-105 transition-transform">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <MessageCircle className="text-white" size={22} />
+              </div>
+              {unreadKonsultasi > 0 && (
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-md animate-pulse">
+                  {unreadKonsultasi > 9 ? '9+' : unreadKonsultasi}
+                </div>
+              )}
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2 relative z-10">Konsultasi Ahli Gizi</h3>
             <p className="text-sm text-gray-500 leading-relaxed relative z-10">
@@ -605,7 +796,178 @@ export default function OrangTuaDashboard() {
             ))}
           </div>
         </div>
+
+        {/* ── Artikel & Berita Terpercaya ───────────────────────────────────────────────── */}
+        <div className="mt-12 mb-8 section-appear section-appear-delay-4">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Artikel Pilihan</h2>
+              <p className="text-sm text-gray-500 mt-1">Berita terbaru seputar stunting dan gizi anak.</p>
+            </div>
+            <Link 
+              href="/artikel" 
+              className="flex items-center gap-1.5 text-sm font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-2 rounded-xl transition-all"
+            >
+              Lihat Lainnya <ChevronRight size={16} />
+            </Link>
+          </div>
+          
+          {articlesLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 size={24} className="text-teal-500 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-3 gap-4 stagger-grid">
+              {articles.map((article, i) => (
+                <a key={i} href={article.url} target="_blank" rel="noopener noreferrer" className="group flex flex-col justify-between bg-white/90 backdrop-blur-sm border border-gray-100 rounded-2xl p-5 hover:border-teal-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 card-shine relative overflow-hidden">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600 bg-teal-50 px-2 py-1 rounded-md">{article.source}</span>
+                      <ExternalLink size={14} className="text-gray-400 group-hover:text-teal-500 transition-colors" />
+                    </div>
+                    <h4 className="font-bold text-gray-900 text-sm mb-2 group-hover:text-teal-700 transition-colors">{article.title}</h4>
+                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{article.desc}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
+    </div>
+  );
+}
+
+// ── Tambah Anak Modal ────────────────────────────────────────────────────────
+function TambahAnakModal({ onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    nama: '',
+    tanggal_lahir: '',
+    jenis_kelamin: '',
+    berat_lahir: '',
+    panjang_lahir: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.nama.trim() || !formData.tanggal_lahir || !formData.jenis_kelamin) {
+      setError('Nama, tanggal lahir, dan jenis kelamin wajib diisi.');
+      return;
+    }
+    setError('');
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('/api/balita', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Terjadi kesalahan.'); return; }
+      onSuccess(data.balita);
+    } catch {
+      setError('Gagal terhubung ke server.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-black/20 animate-fade-in-down max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-r from-teal-500 to-sky-600 px-6 py-5 rounded-t-3xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                <PlusCircle size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-base">Tambah Data Anak</h2>
+                <p className="text-white/70 text-xs mt-0.5">Daftarkan profil dasar balita Anda</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors">
+              <X size={16} className="text-white" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Nama Lengkap Balita *</label>
+              <input
+                type="text"
+                value={formData.nama}
+                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                placeholder="Contoh: Budi Santoso"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-500/10 outline-none transition-all text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Tanggal Lahir *</label>
+              <CustomDatePicker
+                name="tanggalLahirTambah"
+                value={formData.tanggal_lahir}
+                onChange={(e) => setFormData({ ...formData, tanggal_lahir: e.target.value })}
+                placeholder="Pilih Tanggal"
+                defaultYear={new Date().getFullYear() - 1}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Jenis Kelamin *</label>
+              <CustomDropdown
+                name="jenis_kelamin"
+                value={formData.jenis_kelamin}
+                onChange={(e) => setFormData({ ...formData, jenis_kelamin: e.target.value })}
+                placeholder="-- Pilih --"
+                options={[
+                  { value: 'Laki-Laki', label: 'Laki-Laki' },
+                  { value: 'Perempuan', label: 'Perempuan' }
+                ]}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Berat Lahir (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.berat_lahir}
+                  onChange={(e) => setFormData({ ...formData, berat_lahir: e.target.value })}
+                  placeholder="Contoh: 3.2"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-500/10 outline-none transition-all text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Panjang Lahir (cm)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.panjang_lahir}
+                  onChange={(e) => setFormData({ ...formData, panjang_lahir: e.target.value })}
+                  placeholder="Contoh: 49.5"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-500/10 outline-none transition-all text-sm"
+                />
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-rose-600 font-medium">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 mt-2 bg-gradient-to-r from-teal-500 to-sky-600 hover:from-teal-600 hover:to-sky-700 text-white text-sm font-semibold rounded-xl transition-all shadow-md flex justify-center items-center disabled:opacity-70"
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

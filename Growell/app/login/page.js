@@ -95,7 +95,12 @@ export default function LoginPage() {
                 placeholder="nama@email.com" />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">Kata Sandi</label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700">Kata Sandi</label>
+                <Link href="/forgot-password" className="text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors">
+                  Lupa kata sandi?
+                </Link>
+              </div>
               <div className="relative">
                 <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={formData.password} onChange={handleChange} required
                   className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-teal-400 focus:ring-2 focus:ring-teal-400/10 outline-none transition-all text-gray-900 text-sm pr-12 placeholder:text-gray-400"
