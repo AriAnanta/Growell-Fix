@@ -81,8 +81,13 @@ function KaderDashboard() {
   const [editPengukuranUuid, setEditPengukuranUuid] = useState(null);
   const searchParams = useSearchParams();
 
+  // Autocomplete
+  const [balitaOptions, setBalitaOptions] = useState([]);
+  const [showBalitaDropdown, setShowBalitaDropdown] = useState(false);
+  const balitaInputRef = useRef(null);
+
   /** Fetch existing balita + latest pengukuran and pre-fill the kader form for edit mode */
-  const fetchAndPreFill = async (uuid) => {
+  const fetchAndPreFill = async (uuid, isAddMeasurement = false) => {
     try {
       const [balitaRes, pengRes] = await Promise.all([
         apiFetch(`/api/balita/${uuid}`),
@@ -93,14 +98,14 @@ function KaderDashboard() {
       const b = balitaData.balita;
 
       let p = null;
-      if (pengRes.ok) {
+      if (!isAddMeasurement && pengRes.ok) {
         const pengData = await pengRes.json();
         p = pengData.measurements?.[0] || null;
         if (p?.uuid) setEditPengukuranUuid(p.uuid);
       }
 
       const tglLahir = b.tanggal_lahir ? b.tanggal_lahir.split('T')[0] : '';
-      const tglPengukuran = p?.tanggal_pengukuran ? p.tanggal_pengukuran.split('T')[0] : '';
+      const tglPengukuran = p?.tanggal_pengukuran ? p.tanggal_pengukuran.split('T')[0] : (isAddMeasurement ? new Date().toLocaleString("en-US", {timeZone: "Asia/Jakarta", year:"numeric", month:"2-digit", day:"2-digit"}).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2') : '');
 
       // Auto-calculate usia bulan
       let usiaBulan = '';
@@ -149,6 +154,16 @@ function KaderDashboard() {
     }
   };
 
+  const fetchBalitaOptions = async () => {
+    try {
+      const res = await apiFetch('/api/balita/search?limit=500');
+      if (res.ok) {
+        const data = await res.json();
+        setBalitaOptions(data.data || []);
+      }
+    } catch (e) { console.error('Autocomplete error:', e); }
+  };
+
   useEffect(() => {
     if (!isAuthenticated()) { router.push('/login'); return; }
     const u = getUserData();
@@ -163,13 +178,21 @@ function KaderDashboard() {
     setUserData(u);
     fetchDashboardStats();
     fetchRecentData();
-    // Detect edit mode from URL param
+    fetchBalitaOptions(); // Fetch autocomplete options
+    // Detect edit or add measurement mode from URL param
     const editUuid = searchParams.get('edit');
+    const addUuid = searchParams.get('add_measurement');
+    
     if (editUuid) {
       setEditMode(true);
       setEditBalitaUuid(editUuid);
       setActiveTab('input');
-      fetchAndPreFill(editUuid);
+      fetchAndPreFill(editUuid, false);
+    } else if (addUuid) {
+      setEditMode(false); // Normal mode -> insert new measurement
+      // We don't set editBalitaUuid because we want POST /simpan to work normally
+      setActiveTab('input');
+      fetchAndPreFill(addUuid, true);
     }
   }, []);
 
@@ -589,11 +612,19 @@ function KaderDashboard() {
   };
 
   // Click outside dropdown
+  // Click outside dropdowns
   useEffect(() => {
-    const h = (e) => { if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) setProfileDropdownOpen(false); };
-    if (profileDropdownOpen) document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [profileDropdownOpen]);
+    const handleProfileClick = (e) => { if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) setProfileDropdownOpen(false); };
+    const handleBalitaClick = (e) => { if (balitaInputRef.current && !balitaInputRef.current.contains(e.target)) setShowBalitaDropdown(false); };
+    
+    if (profileDropdownOpen) document.addEventListener('mousedown', handleProfileClick);
+    if (showBalitaDropdown) document.addEventListener('mousedown', handleBalitaClick);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleProfileClick);
+      document.removeEventListener('mousedown', handleBalitaClick);
+    };
+  }, [profileDropdownOpen, showBalitaDropdown]);
 
   const handleLogout = async () => { await clearAuth(); router.push('/login'); };
   const handleSaveData = async () => {
@@ -645,6 +676,37 @@ function KaderDashboard() {
           };
           await apiFetch(`/api/pengukuran/${editPengukuranUuid}`, {
             method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pengPayload),
+          });
+        } else {
+          // Balita exists but has no previous measurement, so we insert a new one
+          const pengPayload = {
+            nama_balita: formData.namaBalita,
+            tanggal_lahir: formData.tanggalLahir,
+            jenis_kelamin: formData.jenisKelamin,
+            nama_orang_tua: formData.namaIbu,
+            berat_lahir: toNumber(formData.beratLahir),
+            tinggi_lahir: toNumber(formData.tinggiLahir),
+            kelurahan: formData.namaKelurahan || null,
+            nama_posyandu: formData.namaPosyandu || null,
+            tanggal_pengukuran: formData.tanggalPengukuran,
+            berat_badan: toNumber(formData.beratBadan),
+            tinggi_badan: toNumber(formData.tinggiBadan),
+            lingkar_lengan: toNumber(formData.lila),
+            lingkar_kepala: toNumber(formData.lingkarKepala),
+            kondisi_bb_bulan_lalu: formData.kondisiBeratBadan || null,
+            catatan: formData.rekomendasiGizi || null,
+            status_gizi_bbu: predictionResult.bbu,
+            status_gizi_tbu: predictionResult.tbu,
+            status_gizi_bbtb: predictionResult.bbtb,
+            rekomendasi_utama: rekomendasiResult?.rekomendasi_utama || null,
+            rekomendasi_tambahan: rekomendasiResult
+              ? [rekomendasiResult.rekomendasi_utama, ...(rekomendasiResult.rekomendasi_tambahan || [])].filter(Boolean)
+              : null,
+          };
+          await apiFetch('/api/pengukuran/simpan', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(pengPayload),
           });
@@ -935,12 +997,34 @@ function KaderDashboard() {
                         </div>
 
                         {/* 3. Nama Balita */}
-                        <div id="field-namaBalita">
+                        <div id="field-namaBalita" className="relative" ref={balitaInputRef}>
                           <label className={`block text-sm font-medium mb-1.5 ${formErrors.namaBalita ? 'text-red-600' : 'text-gray-600'}`}>3. Nama Balita *</label>
                           <input type="text" name="namaBalita" value={formData.namaBalita} onChange={handleInputChange}
+                            onFocus={() => setShowBalitaDropdown(true)}
                             className={`${inputClass} ${formErrors.namaBalita ? '!border-red-400 !bg-red-50' : ''}`}
-                            placeholder="Tulis nama lengkap balita" />
-                          {formErrors.namaBalita ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Nama lengkap, digunakan untuk pencocokan data</p>}
+                            placeholder="Tulis nama lengkap balita" autoComplete="off" />
+                          
+                          {showBalitaDropdown && balitaOptions.filter(b => b.nama.toLowerCase().includes(formData.namaBalita.toLowerCase())).length > 0 && (
+                            <div className="absolute left-0 right-0 mt-1 bg-gray-900 text-white rounded-xl shadow-2xl z-50 overflow-hidden py-1 border border-gray-800 max-h-60 overflow-y-auto animate-fade-in-down">
+                              {balitaOptions.filter(b => b.nama.toLowerCase().includes(formData.namaBalita.toLowerCase())).slice(0, 10).map((b, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  className="w-full text-left px-4 py-2.5 hover:bg-gray-800 focus:bg-gray-800 transition-colors border-b border-gray-800/50 last:border-0"
+                                  onClick={() => {
+                                    setEditMode(false); // Make sure it acts as adding new measurement for that balita
+                                    fetchAndPreFill(b.uuid, true);
+                                    setShowBalitaDropdown(false);
+                                  }}
+                                >
+                                  <div className="font-semibold text-sm text-gray-100">{b.nama}</div>
+                                  <div className="text-[11px] text-gray-400 mt-0.5">Ortu: <span className="text-gray-300">{b.nama_orang_tua || '-'}</span> &middot; L/P: <span className="text-gray-300">{b.jenis_kelamin || '-'}</span></div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {formErrors.namaBalita ? <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium"><AlertCircle size={11} /> Wajib diisi</p> : <p className="text-xs text-gray-400 mt-1 italic">Pilih dari daftar atau ketik manual jika balita baru</p>}
                         </div>
 
                         {/* 4. Nama Orang Tua */}
@@ -1304,7 +1388,11 @@ function KaderDashboard() {
                     { label: 'TB/U',  value: d.status_gizi_tbu },
                   ].filter(r => r.value);
                   return (
-                    <div key={d.uuid || d.id} className="p-3.5 rounded-xl hover:bg-gray-50 transition cursor-pointer group border border-transparent hover:border-gray-100">
+                    <div 
+                      key={d.uuid || d.id} 
+                      onClick={() => router.push(`/data-balita/${d.uuid || d.id}`)}
+                      className="p-3.5 rounded-xl hover:bg-gray-50 transition cursor-pointer group border border-transparent hover:border-gray-100"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="font-semibold text-gray-900 text-sm truncate">{d.nama_balita || d.nama}</h4>
