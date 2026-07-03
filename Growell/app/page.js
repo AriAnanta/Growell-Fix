@@ -326,7 +326,7 @@ export default function GrowellLanding() {
               {/* Hero Image Area */}
               <div className={`w-full overflow-x-hidden -mt-24 sm:-mt-48 lg:-mt-64 xl:-mt-80 relative z-0 fade-image-bottom transition-all duration-1000 delay-700 ${!isLoading ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
                 <div className="flex justify-center w-full relative">
-                  <img src="/heroImage3.png" alt="Growell Hero" className="w-[140%] max-w-none sm:w-[125%] md:w-[120%] lg:w-[110%] xl:w-[110%] xl:max-w-none mx-auto h-auto object-contain object-center opacity-90 sm:-translate-x-20 max-sm:-ml-[6%] mt-20 sm:mt-0" style={{ maskImage: 'linear-gradient(to top, transparent 5%, black 40%)', WebkitMaskImage: 'linear-gradient(to top, transparent 5%, black 40%)' }} />
+                  <img src="/heroImage3.webp" alt="Growell Hero" className="w-[140%] max-w-none sm:w-[125%] md:w-[120%] lg:w-[110%] xl:w-[110%] xl:max-w-none mx-auto h-auto object-contain object-center opacity-90 sm:-translate-x-20 max-sm:-ml-[6%] mt-20 sm:mt-0" style={{ maskImage: 'linear-gradient(to top, transparent 5%, black 40%)', WebkitMaskImage: 'linear-gradient(to top, transparent 5%, black 40%)' }} />
                 </div>
               </div>
             </div>

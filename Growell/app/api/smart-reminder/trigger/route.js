@@ -20,16 +20,20 @@ export async function POST(request) {
         b.id AS balita_id,
         b.orang_tua_id,
         ot.nama AS orang_tua_nama,
+        sb.id AS survey_balita_id,
         sb.frekuensi_posyandu_bulan,
         sb.skor_pengetahuan_ibu,
         sb.skor_pola_asuh_makan,
         sb.is_sakit_2_minggu,
-        p.status_gizi_bbtb, p.status_gizi_tbu, p.status_gizi_bbu
+        p.id AS pengukuran_id,
+        p.status_gizi_bbtb, p.status_gizi_tbu, p.status_gizi_bbu,
+        p.rekomendasi_utama, p.rekomendasi_tambahan
       FROM balita b
       JOIN users ot ON b.orang_tua_id = ot.id
       LEFT JOIN survey_balita sb ON sb.balita_id = b.id
       LEFT JOIN (
-        SELECT balita_id, status_gizi_bbtb, status_gizi_tbu, status_gizi_bbu,
+        SELECT id, balita_id, status_gizi_bbtb, status_gizi_tbu, status_gizi_bbu,
+               rekomendasi_utama, rekomendasi_tambahan,
                ROW_NUMBER() OVER(PARTITION BY balita_id ORDER BY tanggal_pengukuran DESC) as rn
         FROM pengukuran
       ) p ON p.balita_id = b.id AND p.rn = 1
@@ -130,14 +134,51 @@ export async function POST(request) {
         konsultasiId = insertConsul.insertId;
       }
 
+      // Mencegah spam: Cek apakah sudah dikirim dalam beberapa hari terakhir
+      const intervalCheck = isHighPriority ? 7 : 30; // 7 hari untuk prioritas tinggi, 30 hari untuk info berkala
+      const [recentMsgs] = await pool.query(
+        `SELECT id FROM pesan_konsultasi 
+         WHERE konsultasi_id = ? AND pengirim_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+         LIMIT 1`,
+        [konsultasiId, systemUserId, intervalCheck]
+      );
+      if (recentMsgs.length > 0) {
+        continue; // Lewati pengiriman jika sudah ada notifikasi baru-baru ini
+      }
+
+      // Ambil rekomendasi gizi
+      let rekomendasiText = "";
+      if (rowData.rekomendasi_utama) {
+        rekomendasiText += `\n\n*Rekomendasi Ahli Gizi (AI):*\n- ${rowData.rekomendasi_utama}`;
+        
+        // Parse rekomendasi tambahan jika ada
+        if (rowData.rekomendasi_tambahan) {
+          try {
+            const parsed = typeof rowData.rekomendasi_tambahan === 'string' 
+              ? JSON.parse(rowData.rekomendasi_tambahan) 
+              : rowData.rekomendasi_tambahan;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              parsed.forEach(rt => {
+                rekomendasiText += `\n- ${rt}`;
+              });
+            }
+          } catch (e) {
+            // Abaikan jika gagal parse
+          }
+        }
+      }
+
       // Send Message
       const msgUuid = uuidv4();
       let autoMsg = "";
+      let titleMsg = "";
 
       if (isHighPriority) {
-        autoMsg = `🚨 [PRIORITAS TINGGI] Halo Ibu/Bapak ${rowData.orang_tua_nama}, berdasarkan analisis Growell AI, pertumbuhan ananda membutuhkan perhatian khusus. Kami menyarankan Ibu/Bapak untuk segera mengunjungi fasilitas kesehatan/Posyandu terdekat untuk konsultasi lebih lanjut.`;
+        titleMsg = "Peringatan Prioritas";
+        autoMsg = `🚨 [PRIORITAS TINGGI] Halo Ibu/Bapak ${rowData.orang_tua_nama}, berdasarkan analisis Growell AI, pertumbuhan ananda membutuhkan perhatian khusus.${rekomendasiText}\n\nKami menyarankan Ibu/Bapak untuk segera mengunjungi fasilitas kesehatan/Posyandu terdekat untuk konsultasi lebih lanjut.`;
       } else {
-        autoMsg = `💡 [INFO BERKALA] Halo Ibu/Bapak ${rowData.orang_tua_nama}, terima kasih telah memantau kesehatan ananda. Jangan lupa jadwal posyandu bulan ini ya! Tetap semangat memberikan gizi terbaik untuk si kecil.`;
+        titleMsg = "Info Perkembangan";
+        autoMsg = `💡 [INFO BERKALA] Halo Ibu/Bapak ${rowData.orang_tua_nama}, terima kasih telah memantau kesehatan ananda.${rekomendasiText}\n\nTetap semangat memberikan gizi terbaik untuk si kecil.`;
       }
       
       await pool.query(
@@ -145,6 +186,38 @@ export async function POST(request) {
          VALUES (?, ?, ?, ?, 'text', 0)`,
          [msgUuid, konsultasiId, systemUserId, autoMsg]
       );
+
+      // Insert into reminder_priority
+      const reminderStrategy = isHighPriority ? 'Aggressive' : 'Periodic';
+      const [insertPriority] = await pool.query(
+        `INSERT INTO reminder_priority (
+          balita_id, pengukuran_id, survey_balita_id, 
+          attendance_score, child_score, parent_score, final_score, 
+          cluster_label, priority_level, reminder_strategy
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          balitaId, 
+          rowData.pengukuran_id || null, 
+          rowData.survey_balita_id || null,
+          res.attendance_norm,
+          res.child_norm,
+          res.parent_norm,
+          res.final_score,
+          String(res.cluster),
+          res.priority_label,
+          reminderStrategy
+        ]
+      );
+      const reminderPriorityId = insertPriority.insertId;
+
+      // Insert into notifications
+      const notifUuid = uuidv4();
+      await pool.query(
+        `INSERT INTO notifications (uuid, user_id, judul, pesan, tipe, is_read, reminder_priority_id)
+         VALUES (?, ?, ?, ?, ?, 0, ?)`,
+        [notifUuid, orangTuaId, titleMsg, autoMsg, isHighPriority ? 'warning' : 'info', reminderPriorityId]
+      );
+
       sentCount++;
     }
 
