@@ -12,7 +12,7 @@ export async function GET(request) {
     const [users] = await pool.query(
       `SELECT u.id, u.uuid, u.nama, u.email, u.role, u.no_telepon, u.alamat, 
         u.foto_profil, u.posyandu_id, u.is_new_user, u.created_at,
-        p.nama AS posyandu_nama
+        p.nama AS posyandu_nama, p.alamat AS posyandu_alamat
       FROM users u
       LEFT JOIN posyandu p ON u.posyandu_id = p.id
       WHERE u.id = ?`,
@@ -40,7 +40,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { nama, no_telepon, alamat, currentPassword, newPassword } = body;
+    const { nama, no_telepon, alamat, posyandu_nama, posyandu_alamat, currentPassword, newPassword } = body;
 
     // Handle password change
     if (currentPassword && newPassword) {
@@ -66,6 +66,27 @@ export async function PUT(request) {
     if (updates.length > 0) {
       values.push(user.id);
       await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+    }
+
+    // Handle Posyandu info for kader
+    if (user.role === 'kader' && posyandu_nama) {
+      const [usersRows] = await pool.query('SELECT posyandu_id FROM users WHERE id = ?', [user.id]);
+      const currentPosyanduId = usersRows[0]?.posyandu_id;
+      
+      if (currentPosyanduId) {
+        await pool.query(
+          'UPDATE posyandu SET nama = ?, alamat = ? WHERE id = ?',
+          [posyandu_nama, posyandu_alamat || null, currentPosyanduId]
+        );
+      } else {
+        const { v4: uuidv4 } = require('uuid');
+        const uuid = uuidv4();
+        const [insertRes] = await pool.query(
+          'INSERT INTO posyandu (uuid, nama, alamat, kader_id) VALUES (?, ?, ?, ?)',
+          [uuid, posyandu_nama, posyandu_alamat || null, user.id]
+        );
+        await pool.query('UPDATE users SET posyandu_id = ? WHERE id = ?', [insertRes.insertId, user.id]);
+      }
     }
 
     // Refresh growell_user cookie so navbar reflects the updated name/info
