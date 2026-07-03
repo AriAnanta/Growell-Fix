@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir setuptools six
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools six
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY app.py .
 COPY models/ ./models/
