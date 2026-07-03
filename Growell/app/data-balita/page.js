@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search, Users, CheckCircle2, AlertCircle, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Search, Users, CheckCircle2, AlertCircle, Pencil, Trash2, Loader2, PlusCircle } from 'lucide-react';
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import { apiFetch, isAuthenticated } from '@/utils/auth';
 import AppNavbar from '@/components/common/AppNavbar';
@@ -252,10 +252,14 @@ export default function ListDataBalita() {
                       </td>
                     </tr>
                   ) : filteredData.map((item, index) => (
-                    <tr key={item.uuid || index} className="hover:bg-teal-50/30 transition-colors duration-300 group">
+                    <tr 
+                      key={item.uuid || index} 
+                      onClick={() => router.push(`/data-balita/${item.uuid}`)}
+                      className="hover:bg-teal-50/30 transition-colors duration-300 group cursor-pointer"
+                    >
                       <td className="py-3.5 px-5 text-sm text-gray-400 tabular-nums">{(page - 1) * 15 + index + 1}</td>
                       <td className="py-3.5 px-5">
-                        <p className="text-sm font-medium text-gray-900">{item.nama || '—'}</p>
+                        <p className="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">{item.nama || '—'}</p>
                         <p className="text-xs text-gray-400 mt-0.5">Ortu: {item.nama_orang_tua || '—'}</p>
                       </td>
                       <td className="py-3.5 px-5 text-sm text-gray-600 hidden md:table-cell">{item.jenis_kelamin || '—'}</td>
@@ -284,15 +288,22 @@ export default function ListDataBalita() {
                         <td className="py-3.5 px-5 text-right">
                           <div className="inline-flex items-center gap-1.5">
                             <button
-                              onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/kader?add_measurement=${item.uuid}`); }}
+                              className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors relative z-10"
+                              title="Tambah pengukuran bulan ini"
+                            >
+                              <PlusCircle size={15} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors relative z-10"
                               title="Edit data balita"
                             >
                               <Pencil size={15} />
                             </button>
                             <button
-                              onClick={() => setDeleteTarget({ uuid: item.uuid, nama: item.nama })}
-                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); setDeleteTarget({ uuid: item.uuid, nama: item.nama }); }}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors relative z-10"
                               title="Hapus data balita"
                             >
                               <Trash2 size={15} />
