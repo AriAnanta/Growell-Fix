@@ -109,7 +109,7 @@ export default function StatusBalitaPage() {
                             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-2">{data.nama}</h1>
                             <div className="flex flex-wrap gap-y-2 gap-x-4 text-sm font-medium text-slate-500">
                                 <span className="flex items-center gap-1.5"><Baby size={16} className="text-teal-500" /> {data.jenis_kelamin}</span>
-                                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-400" /> Lahi: {formatDate(data.tanggal_lahir)}</span>
+                                <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-400" /> Lahir: {formatDate(data.tanggal_lahir)}</span>
                                 <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">Posyandu {data.posyandu_nama}</span>
                             </div>
                         </div>
