@@ -74,12 +74,15 @@ export default function CustomDatePicker({ value, onChange, name, placeholder = 
     return () => document.removeEventListener('mousedown', h);
   }, [isOpen, selectedDate]);
 
-  /* â”€â”€ auto-scroll year list to the active year when year picker opens â”€â”€ */
+  /* ── auto-scroll year list to the active year when year picker opens ── */
   useEffect(() => {
     if (pickerMode === 'year' && yearListRef.current) {
       requestAnimationFrame(() => {
-        const active = yearListRef.current?.querySelector('[data-active="true"]');
-        if (active) active.scrollIntoView({ block: 'center', behavior: 'instant' });
+        const container = yearListRef.current;
+        const active = container?.querySelector('[data-active="true"]');
+        if (active && container) {
+          container.scrollTop = active.offsetTop - container.offsetTop - (container.clientHeight / 2) + (active.clientHeight / 2);
+        }
       });
     }
   }, [pickerMode, isOpen]);

@@ -46,13 +46,10 @@ export default function SearchableBalitaDropdown({
 
   const filtered =
     query.trim().length === 0
-      ? items
+      ? []
       : items.filter((i) => {
-          const q = query.toLowerCase();
-          return (
-            (i.nama || '').toLowerCase().includes(q) ||
-            (i.nama_orang_tua || '').toLowerCase().includes(q)
-          );
+          const q = query.toLowerCase().trim();
+          return (i.nama || '').toLowerCase().trim() === q;
         });
 
   const handleSelect = (item) => {
@@ -133,9 +130,11 @@ export default function SearchableBalitaDropdown({
           {/* List */}
           <div className="max-h-60 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-400">
+              <div className="py-8 px-4 text-center text-sm text-gray-400">
                 <User size={20} className="mx-auto mb-2 opacity-30" />
-                Tidak ada balita yang ditemukan
+                {query.trim().length === 0 
+                  ? "Ketik nama lengkap anak Anda untuk memunculkan data" 
+                  : "Data tidak muncul. Pastikan mengetik nama lengkap anak sesuai data Posyandu."}
               </div>
             ) : (
               filtered.map((item) => (
