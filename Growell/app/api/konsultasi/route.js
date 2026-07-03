@@ -38,7 +38,9 @@ export async function GET(request) {
         ot.nama AS orang_tua_nama, ot.foto_profil AS orang_tua_foto,
         ag.nama AS ahli_gizi_nama, ag.foto_profil AS ahli_gizi_foto,
         b.nama AS balita_nama,
-        (SELECT COUNT(*) FROM pesan_konsultasi WHERE konsultasi_id = k.id AND is_read = FALSE AND pengirim_id != ?) as unread_count
+        (SELECT COUNT(*) FROM pesan_konsultasi WHERE konsultasi_id = k.id AND is_read = FALSE AND pengirim_id != ?) as unread_count,
+        (SELECT pesan FROM pesan_konsultasi WHERE konsultasi_id = k.id ORDER BY created_at DESC LIMIT 1) as lastMessage,
+        (SELECT created_at FROM pesan_konsultasi WHERE konsultasi_id = k.id ORDER BY created_at DESC LIMIT 1) as lastMessageTime
       FROM konsultasi k
       LEFT JOIN users ot ON k.orang_tua_id = ot.id
       LEFT JOIN users ag ON k.ahli_gizi_id = ag.id
