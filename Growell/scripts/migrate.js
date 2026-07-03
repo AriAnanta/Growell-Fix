@@ -18,6 +18,7 @@ const TABLES = [
     posyandu_id INT,
     is_active BOOLEAN DEFAULT TRUE,
     is_new_user BOOLEAN DEFAULT TRUE,
+    is_notif_jadwal_active BOOLEAN DEFAULT FALSE,
     last_login DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -367,7 +368,32 @@ const TABLES = [
   `ALTER TABLE balita ADD COLUMN nama_orang_tua VARCHAR(100) NULL AFTER panjang_lahir`,
   // `UPDATE balita SET nama_orang_tua = COALESCE(nama_ibu, nama_ayah) WHERE nama_orang_tua IS NULL`,
   // `ALTER TABLE balita DROP COLUMN nama_ibu`,
-  // `ALTER TABLE balita DROP COLUMN nama_ayah`
+  // `ALTER TABLE balita DROP COLUMN nama_ayah`,
+
+  // ========================
+  // 12. REMINDER PRIORITY
+  // ========================
+  `CREATE TABLE IF NOT EXISTS reminder_priority (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    balita_id INT NOT NULL,
+    pengukuran_id INT,
+    survey_balita_id INT,
+    attendance_score FLOAT,
+    child_score FLOAT,
+    parent_score FLOAT,
+    final_score FLOAT,
+    cluster_label VARCHAR(100),
+    priority_level VARCHAR(100),
+    reminder_strategy VARCHAR(255),
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (balita_id) REFERENCES balita(id) ON DELETE CASCADE,
+    FOREIGN KEY (pengukuran_id) REFERENCES pengukuran(id) ON DELETE SET NULL,
+    FOREIGN KEY (survey_balita_id) REFERENCES survey_balita(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ALTER for existing databases — add reminder_priority_id to notifications
+  `ALTER TABLE notifications ADD COLUMN reminder_priority_id INT NULL`,
+  `ALTER TABLE notifications ADD CONSTRAINT fk_notif_reminder FOREIGN KEY (reminder_priority_id) REFERENCES reminder_priority(id) ON DELETE SET NULL`
 ];
 
 async function migrate() {
