@@ -43,5 +43,8 @@ node scripts/migrate.js || true
 echo "🌱 Running seed..."
 node scripts/seed.js || true
 
+echo "⏰ Starting Cron Service in background..."
+node scripts/cron.js &
+
 echo "🚀 Starting Next.js server..."
 exec node server.js
