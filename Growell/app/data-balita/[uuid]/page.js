@@ -152,7 +152,7 @@ export default function DetailBalitaPage() {
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-6 min-w-0">
                         {/* Latest Status */}
                         <div>
                             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -160,38 +160,38 @@ export default function DetailBalitaPage() {
                             </h3>
 
                             {latest ? (
-                                <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+                                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100">
                                         <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pengukuran Terakhir</div>
                                         <div className="text-xs font-bold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-lg">{formatDate(latest.tanggal_pengukuran)}</div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-6">
                                         {[
                                             { label: 'BB / TB', value: latest.status_gizi_bbtb, desc: 'Berat thd Tinggi' },
                                             { label: 'BB / Umur', value: latest.status_gizi_bbu, desc: 'Berat thd Umur' },
                                             { label: 'TB / Umur', value: latest.status_gizi_tbu, desc: 'Tinggi thd Umur' },
                                         ].map((stat, i) => (
-                                            <div key={i} className={`p-4 rounded-2xl border ${getStatusColor(stat.value)}`}>
+                                            <div key={i} className={`p-3 sm:p-4 rounded-2xl border ${getStatusColor(stat.value)} ${i === 0 ? 'col-span-2 md:col-span-1' : ''}`}>
                                                 <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{stat.label}</div>
-                                                <div className="text-lg font-bold mb-1">{stat.value || '-'}</div>
-                                                <div className="text-[10px] font-medium opacity-60">{stat.desc}</div>
+                                                <div className="text-sm sm:text-lg font-bold mb-1">{stat.value || '-'}</div>
+                                                <div className="text-[10px] font-medium opacity-60 hidden sm:block">{stat.desc}</div>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <div className="flex flex-wrap gap-4 text-sm font-medium">
-                                        <div className="flex-1 bg-gray-50 border border-gray-100 p-4 rounded-2xl min-w-[120px]">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 text-sm font-medium">
+                                        <div className="bg-gray-50 border border-gray-100 p-3 sm:p-4 rounded-2xl">
                                             <span className="text-gray-400 block text-[10px] font-bold uppercase tracking-wider mb-1">Berat Badan</span>
-                                            <span className="font-black text-gray-900 text-xl">{latest.berat_badan} <span className="text-sm font-semibold text-gray-500">kg</span></span>
+                                            <span className="font-black text-gray-900 text-lg sm:text-xl">{latest.berat_badan} <span className="text-xs sm:text-sm font-semibold text-gray-500">kg</span></span>
                                         </div>
-                                        <div className="flex-1 bg-gray-50 border border-gray-100 p-4 rounded-2xl min-w-[120px]">
+                                        <div className="bg-gray-50 border border-gray-100 p-3 sm:p-4 rounded-2xl">
                                             <span className="text-gray-400 block text-[10px] font-bold uppercase tracking-wider mb-1">Tinggi Badan</span>
-                                            <span className="font-black text-gray-900 text-xl">{latest.tinggi_badan} <span className="text-sm font-semibold text-gray-500">cm</span></span>
+                                            <span className="font-black text-gray-900 text-lg sm:text-xl">{latest.tinggi_badan} <span className="text-xs sm:text-sm font-semibold text-gray-500">cm</span></span>
                                         </div>
-                                        <div className="flex-1 bg-gray-50 border border-gray-100 p-4 rounded-2xl min-w-[120px]">
+                                        <div className="bg-gray-50 border border-gray-100 p-3 sm:p-4 rounded-2xl col-span-2 md:col-span-1">
                                             <span className="text-gray-400 block text-[10px] font-bold uppercase tracking-wider mb-1">Lingkar Kepala</span>
-                                            <span className="font-black text-gray-900 text-xl">{latest.lingkar_kepala || '-'} <span className="text-sm font-semibold text-gray-500">cm</span></span>
+                                            <span className="font-black text-gray-900 text-lg sm:text-xl">{latest.lingkar_kepala || '-'} <span className="text-xs sm:text-sm font-semibold text-gray-500">cm</span></span>
                                         </div>
                                     </div>
 
@@ -219,65 +219,67 @@ export default function DetailBalitaPage() {
                                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                                     <LineChartIcon size={16} className="text-sky-500" /> Grafik Pertumbuhan & Prediksi
                                 </h3>
-                                <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 overflow-x-auto">
-                                    <div className="min-w-[500px] h-[300px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            {(() => {
-                                                // Build ascending history series
-                                                const histAsc = [...measurements].reverse().map((h, idx, arr) => {
-                                                    const isLast = idx === arr.length - 1;
-                                                    return {
-                                                        tanggal_pengukuran: h.tanggal_pengukuran,
-                                                        berat_badan: h.berat_badan,
-                                                        tinggi_badan: h.tinggi_badan,
-                                                        // Connect projection line starting from the last actual point
-                                                        berat_proyeksi: isLast ? h.berat_badan : null,
-                                                        tinggi_proyeksi: isLast ? h.tinggi_badan : null,
-                                                    };
-                                                });
-
-                                                // Append forecast points (t+1..t+6) with computed future dates
-                                                let forecastPoints = [];
-                                                if (forecast?.eligible && forecast.prediksi?.length > 0) {
-                                                    const baseDate = new Date(forecast.tanggal_acuan);
-                                                    forecastPoints = forecast.prediksi.map((p, idx) => {
-                                                        const d = new Date(baseDate);
-                                                        d.setMonth(d.getMonth() + (idx + 1));
+                                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="w-full overflow-x-auto pb-4">
+                                        <div className="min-w-[500px] h-[300px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                {(() => {
+                                                    // Build ascending history series
+                                                    const histAsc = [...measurements].reverse().map((h, idx, arr) => {
+                                                        const isLast = idx === arr.length - 1;
                                                         return {
-                                                            tanggal_pengukuran: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-                                                            berat_badan: null,
-                                                            tinggi_badan: null,
-                                                            berat_proyeksi: p.bb,
-                                                            tinggi_proyeksi: p.tb,
+                                                            tanggal_pengukuran: h.tanggal_pengukuran,
+                                                            berat_badan: h.berat_badan,
+                                                            tinggi_badan: h.tinggi_badan,
+                                                            // Connect projection line starting from the last actual point
+                                                            berat_proyeksi: isLast ? h.berat_badan : null,
+                                                            tinggi_proyeksi: isLast ? h.tinggi_badan : null,
                                                         };
                                                     });
-                                                }
 
-                                                const chartData = [...histAsc, ...forecastPoints];
+                                                    // Append forecast points (t+1..t+6) with computed future dates
+                                                    let forecastPoints = [];
+                                                    if (forecast?.eligible && forecast.prediksi?.length > 0) {
+                                                        const baseDate = new Date(forecast.tanggal_acuan);
+                                                        forecastPoints = forecast.prediksi.map((p, idx) => {
+                                                            const d = new Date(baseDate);
+                                                            d.setMonth(d.getMonth() + (idx + 1));
+                                                            return {
+                                                                tanggal_pengukuran: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                                                                berat_badan: null,
+                                                                tinggi_badan: null,
+                                                                berat_proyeksi: p.bb,
+                                                                tinggi_proyeksi: p.tb,
+                                                            };
+                                                        });
+                                                    }
 
-                                                return (
-                                                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                                        <XAxis dataKey="tanggal_pengukuran" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} tickMargin={10} />
-                                                        <YAxis yAxisId="left" stroke="#14b8a6" fontSize={12} tickFormatter={(val) => `${val}kg`} />
-                                                        <YAxis yAxisId="right" orientation="right" stroke="#6366f1" fontSize={12} tickFormatter={(val) => `${val}cm`} />
-                                                        <Tooltip
-                                                            labelFormatter={formatDate}
-                                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                                                        />
-                                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                        <Line yAxisId="left" type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
-                                                        <Line yAxisId="right" type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
-                                                        {forecastPoints.length > 0 && (
-                                                            <>
-                                                                <Line yAxisId="left" type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
-                                                                <Line yAxisId="right" type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
-                                                            </>
-                                                        )}
-                                                    </LineChart>
-                                                );
-                                            })()}
-                                        </ResponsiveContainer>
+                                                    const chartData = [...histAsc, ...forecastPoints];
+
+                                                    return (
+                                                        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                                            <XAxis dataKey="tanggal_pengukuran" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} tickMargin={10} />
+                                                            <YAxis yAxisId="left" stroke="#14b8a6" fontSize={12} tickFormatter={(val) => `${val}kg`} width={40} />
+                                                            <YAxis yAxisId="right" orientation="right" stroke="#6366f1" fontSize={12} tickFormatter={(val) => `${val}cm`} width={40} />
+                                                            <Tooltip
+                                                                labelFormatter={formatDate}
+                                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                                                            />
+                                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                            <Line yAxisId="left" type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
+                                                            <Line yAxisId="right" type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
+                                                            {forecastPoints.length > 0 && (
+                                                                <>
+                                                                    <Line yAxisId="left" type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
+                                                                    <Line yAxisId="right" type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
+                                                                </>
+                                                            )}
+                                                        </LineChart>
+                                                    );
+                                                })()}
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 </div>
                                 {forecast?.eligible === false && (
@@ -301,27 +303,27 @@ export default function DetailBalitaPage() {
                                     <Calendar size={16} className="text-indigo-500" /> Riwayat Pengukuran
                                 </h3>
                                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
+                                    <div className="overflow-x-auto w-full">
+                                        <table className="w-full text-left border-collapse min-w-[450px]">
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                                                    <th className="p-4 pl-6">Tanggal</th>
-                                                    <th className="p-4">BB (kg)</th>
-                                                    <th className="p-4">TB (cm)</th>
-                                                    <th className="p-4">BB/TB</th>
-                                                    <th className="p-4">TB/U</th>
+                                                    <th className="p-3 sm:p-4 pl-4 sm:pl-6">Tanggal</th>
+                                                    <th className="p-3 sm:p-4">BB (kg)</th>
+                                                    <th className="p-3 sm:p-4">TB (cm)</th>
+                                                    <th className="p-3 sm:p-4">BB/TB</th>
+                                                    <th className="p-3 sm:p-4">TB/U</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 text-sm">
+                                            <tbody className="divide-y divide-gray-100 text-xs sm:text-sm">
                                                 {measurements.slice(1).map((m, i) => (
                                                     <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="p-4 pl-6 font-semibold text-gray-800 whitespace-nowrap">{formatDate(m.tanggal_pengukuran)}</td>
-                                                        <td className="p-4 font-medium text-gray-600">{m.berat_badan || '-'}</td>
-                                                        <td className="p-4 font-medium text-gray-600">{m.tinggi_badan || '-'}</td>
-                                                        <td className="p-4">
+                                                        <td className="p-3 sm:p-4 pl-4 sm:pl-6 font-semibold text-gray-800 whitespace-nowrap">{formatDate(m.tanggal_pengukuran)}</td>
+                                                        <td className="p-3 sm:p-4 font-medium text-gray-600">{m.berat_badan || '-'}</td>
+                                                        <td className="p-3 sm:p-4 font-medium text-gray-600">{m.tinggi_badan || '-'}</td>
+                                                        <td className="p-3 sm:p-4">
                                                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold border ${getStatusColor(m.status_gizi_bbtb)} whitespace-nowrap`}>{m.status_gizi_bbtb || '-'}</span>
                                                         </td>
-                                                        <td className="p-4">
+                                                        <td className="p-3 sm:p-4">
                                                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold border ${getStatusColor(m.status_gizi_tbu)} whitespace-nowrap`}>{m.status_gizi_tbu || '-'}</span>
                                                         </td>
                                                     </tr>
@@ -334,12 +336,12 @@ export default function DetailBalitaPage() {
                         )}
                     </div>
 
-                    <div className="lg:col-span-1 space-y-6">
+                    <div className="lg:col-span-1 space-y-6 min-w-0">
                         {/* Survey Info */}
                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <FileText size={16} className="text-sky-500" /> Data Formulir Orang Tua
                         </h3>
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sm:p-6 hover:shadow-md transition-shadow">
                             {latestSurvey ? (
                                 <div className="space-y-4">
                                     <div className="pb-3 border-b border-gray-100">
@@ -348,28 +350,28 @@ export default function DetailBalitaPage() {
                                     </div>
                                     <div>
                                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Ringkasan Respon:</div>
-                                        <ul className="space-y-2.5 text-sm">
-                                            <li className="flex justify-between items-start gap-2">
-                                                <span className="text-gray-500">ASI Eksklusif</span>
-                                                <span className="font-semibold text-gray-900 text-right">{latestSurvey.is_asi_eksklusif ? 'Ya' : 'Tidak / Belum'}</span>
+                                        <ul className="space-y-3 text-sm">
+                                            <li className="flex justify-between items-start gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                                <span className="text-gray-500 whitespace-nowrap shrink-0">ASI Eksklusif</span>
+                                                <span className="font-semibold text-gray-900 text-right break-words">{latestSurvey.is_asi_eksklusif ? 'Ya' : 'Tidak / Belum'}</span>
                                             </li>
-                                            <li className="flex justify-between items-start gap-2">
-                                                <span className="text-gray-500">MPASI Protein Hewani</span>
-                                                <span className="font-semibold text-gray-900 text-right">{latestSurvey.is_mpasi_hewani ? 'Ya' : 'Tidak'}</span>
+                                            <li className="flex justify-between items-start gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                                <span className="text-gray-500 whitespace-nowrap shrink-0">MPASI Protein Hewani</span>
+                                                <span className="font-semibold text-gray-900 text-right break-words">{latestSurvey.is_mpasi_hewani ? 'Ya' : 'Tidak'}</span>
                                             </li>
-                                            <li className="flex justify-between items-start gap-2">
-                                                <span className="text-gray-500">Pola Asuh Makan</span>
-                                                <span className="font-semibold text-gray-900 text-right capitalize">{latestSurvey.pola_asuh_makan?.replace(/_/g, ' ') || '-'}</span>
+                                            <li className="flex justify-between items-start gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                                <span className="text-gray-500 whitespace-nowrap shrink-0">Pola Asuh Makan</span>
+                                                <span className="font-semibold text-gray-900 text-right capitalize break-words">{latestSurvey.pola_asuh_makan?.replace(/_/g, ' ') || '-'}</span>
                                             </li>
-                                            <li className="flex justify-between items-start gap-2">
-                                                <span className="text-gray-500">Sakit 2 Minggu Terakhir</span>
-                                                <span className={`font-semibold text-right ${latestSurvey.is_sakit_2_minggu ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                            <li className="flex justify-between items-start gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                                <span className="text-gray-500 whitespace-nowrap shrink-0">Sakit 2 Minggu Terakhir</span>
+                                                <span className={`font-semibold text-right break-words ${latestSurvey.is_sakit_2_minggu ? 'text-amber-600' : 'text-emerald-600'}`}>
                                                     {latestSurvey.is_sakit_2_minggu ? 'Ya' : 'Tidak'}
                                                 </span>
                                             </li>
-                                            <li className="flex justify-between items-start gap-2">
-                                                <span className="text-gray-500">Akses Sanitasi Layak</span>
-                                                <span className={`font-semibold text-right ${latestSurvey.jenis_sanitasi?.includes('sungai') || latestSurvey.jenis_sanitasi?.includes('terbuka') ? 'text-amber-600' : 'text-gray-900'}`}>
+                                            <li className="flex justify-between items-start gap-3 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                                <span className="text-gray-500 whitespace-nowrap shrink-0">Akses Sanitasi Layak</span>
+                                                <span className={`font-semibold text-right break-words ${latestSurvey.jenis_sanitasi?.includes('sungai') || latestSurvey.jenis_sanitasi?.includes('terbuka') ? 'text-amber-600' : 'text-gray-900'}`}>
                                                     {latestSurvey.jenis_sanitasi?.includes('sungai') ? 'Kurang Baik' : 'Baik'}
                                                 </span>
                                             </li>
