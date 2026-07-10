@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import growellLogo from '../assets/Growell (1).png';
+import { showError } from '../../utils/swal';
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -14,8 +15,8 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) { alert('Kata sandi tidak cocok!'); return; }
-    if (!agreedToTerms) { alert('Anda harus menyetujui syarat dan ketentuan'); return; }
+    if (formData.password !== formData.confirmPassword) { showError('Gagal', 'Kata sandi tidak cocok!'); return; }
+    if (!agreedToTerms) { showError('Peringatan', 'Anda harus menyetujui syarat dan ketentuan'); return; }
     setIsLoading(true);
     setTimeout(() => { setIsLoading(false); console.log('Register:', formData); }, 800);
   };

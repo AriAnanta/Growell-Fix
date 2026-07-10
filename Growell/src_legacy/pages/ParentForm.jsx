@@ -5,6 +5,7 @@ import growellLogo from '../assets/Growell (1).png';
 import Breadcrumb from '../components/common/Breadcrumb';
 import CustomDatePicker from '../components/forms/CustomDatePicker';
 import CustomDropdown from '../components/forms/CustomDropdown';
+import { showError } from '../../utils/swal';
 
 export default function ParentForm() {
   const [isComplete, setIsComplete] = useState(false);
@@ -303,7 +304,7 @@ export default function ParentForm() {
   const handleSubmit = async () => {
     try {
       if (!formData.namaBalita || !formData.tanggalLahirBalita) {
-        alert('Nama balita dan tanggal lahir wajib diisi.');
+        showError('Gagal', 'Nama balita dan tanggal lahir wajib diisi.');
         return;
       }
 
@@ -325,7 +326,7 @@ export default function ParentForm() {
       setIsComplete(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      alert(err.message);
+      showError('Gagal', err.message);
     }
   };
 

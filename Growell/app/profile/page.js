@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, Edit2, Mail, Phone, MapPin, Shield, Calendar, Clock, Plus, Trash2, X, Info, Lock, Eye, EyeOff } from 'lucide-react';
 import { getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
+import { showSuccess, showError, showConfirm, showAlert } from '@/utils/swal';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import AppNavbar from '@/components/common/AppNavbar';
 
@@ -58,7 +59,7 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-      alert("Konfirmasi password baru tidak cocok!");
+      showError('Gagal', 'Konfirmasi password baru tidak cocok!');
       return;
     }
     setIsSaving(true);
@@ -68,10 +69,10 @@ export default function ProfilePage() {
         setIsEditing(false);
         // growell_user cookie is refreshed by the API route after save
         await fetchProfile();
-        alert('Profil berhasil diperbarui!');
+        showSuccess('Berhasil', 'Profil berhasil diperbarui!');
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal menyimpan profil');
+        showError('Gagal', data.error || 'Gagal menyimpan profil');
       }
     } catch (e) { console.error(e); }
     finally { setIsSaving(false); }
@@ -101,15 +102,17 @@ export default function ProfilePage() {
         setShowJadwalModal(false);
         setNewJadwal({ tanggal: '', waktu_mulai: '', waktu_selesai: '', kegiatan: '', catatan: '' });
         fetchJadwal();
+        showSuccess('Berhasil', 'Jadwal berhasil ditambahkan!');
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal menambahkan jadwal');
+        showError('Gagal', data.error || 'Gagal menambahkan jadwal');
       }
     } catch (e) { console.error(e); }
   };
 
   const handleDeleteJadwal = async (uuid) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
+    const result = await showConfirm('Hapus Jadwal', 'Apakah Anda yakin ingin menghapus jadwal ini?');
+    if (!result.isConfirmed) return;
     try {
       const res = await apiFetch(`/api/kader/jadwal?uuid=${uuid}`, { method: 'DELETE' });
       if (res.ok) fetchJadwal();

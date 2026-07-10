@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCircle2, MessageSquare, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { showSuccess, showError } from '@/utils/swal';
 
 export default function SmartReminderDashboard() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function SmartReminderDashboard() {
       }
     } catch (error) {
       console.error('Failed to fetch reminders:', error);
-      alert('Gagal memuat data reminder');
+      showError('Error', 'Gagal memuat data reminder');
     } finally {
       setLoading(false);
     }
@@ -36,13 +37,13 @@ export default function SmartReminderDashboard() {
       const data = await res.json();
       
       if (res.ok) {
-        alert(`Berhasil! ${data.messages_sent || data.high_priority_found} pesan baru terkirim.`);
+        showSuccess('Berhasil', `${data.messages_sent || data.high_priority_found} pesan baru terkirim.`);
         fetchReminders();
       } else {
-        alert(data.error || 'Gagal menjalankan job');
+        showError('Gagal', data.error || 'Gagal menjalankan job');
       }
     } catch (error) {
-      alert('Terjadi kesalahan sistem');
+      showError('Error', 'Terjadi kesalahan sistem');
     } finally {
       setTriggering(false);
     }

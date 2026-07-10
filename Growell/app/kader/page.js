@@ -14,6 +14,7 @@ import CustomDropdown from '@/components/forms/CustomDropdown';
 import SuccessModal from '@/components/common/SuccessModal';
 import { useToast } from '@/components/common/Toast';
 import { clearAuth, getUserData, apiFetch, isAuthenticated } from '@/utils/auth';
+import { showConfirm } from '@/utils/swal';
 import AppNavbar from '@/components/common/AppNavbar';
 
 // Generate a 6-character alphanumeric link code
@@ -1343,8 +1344,11 @@ function KaderDashboard() {
                         {isSaving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : dataSaved ? <><CheckCircle2 size={16} /> Tersimpan</> : editMode ? <><Save size={16} /> Update Data</> : <><Save size={16} /> Simpan Data</>}
                       </button>
                       <button
-                        onClick={() => {
-                          if (!dataSaved && predictionResult && !window.confirm('Data prediksi belum disimpan. Lanjutkan tanpa menyimpan?')) return;
+                        onClick={async () => {
+                          if (!dataSaved && predictionResult) {
+                            const res = await showConfirm('Peringatan', 'Data prediksi belum disimpan. Lanjutkan tanpa menyimpan?');
+                            if (!res.isConfirmed) return;
+                          }
                           if (editMode) { handleReset(); router.push('/data-balita'); }
                           else { handleReset(); setActiveTab('input'); }
                         }}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Download, Calendar, Loader2, CheckCircle2, AlertCi
 import CustomDropdown from '@/components/forms/CustomDropdown';
 import CustomDatePicker from '@/components/forms/CustomDatePicker';
 import { apiFetch, isAuthenticated, getUserData } from '@/utils/auth';
+import { showError } from '@/utils/swal';
 import AppNavbar from '@/components/common/AppNavbar';
 
 export default function LaporanPage() {
@@ -62,7 +63,7 @@ export default function LaporanPage() {
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = fileName || 'laporan'; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
-    } catch (e) { alert(e.message); }
+    } catch (e) { showError('Gagal', e.message); }
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
