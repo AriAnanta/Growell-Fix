@@ -4,12 +4,21 @@ import pool from '@/lib/db';
 
 export async function POST(request) {
   try {
-    // 1. Get the System User
-    const [sysUsers] = await pool.query(
+    // 1. Get or Create the System User
+    let [sysUsers] = await pool.query(
       "SELECT id FROM users WHERE email = 'system@growell.com' LIMIT 1"
     );
     if (sysUsers.length === 0) {
-      return NextResponse.json({ error: 'System user not found' }, { status: 500 });
+      await pool.query(`
+        INSERT INTO users (uuid, nama, email, password, role, is_active) 
+        VALUES (UUID(), 'Sistem Growell', 'system@growell.com', '$2a$10$xyz', 'ahli_gizi', 1)
+      `);
+      [sysUsers] = await pool.query(
+        "SELECT id FROM users WHERE email = 'system@growell.com' LIMIT 1"
+      );
+      if (sysUsers.length === 0) {
+        return NextResponse.json({ error: 'System user creation failed' }, { status: 500 });
+      }
     }
     const systemUserId = sysUsers[0].id;
 
