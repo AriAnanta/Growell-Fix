@@ -449,7 +449,7 @@ function ParentFormPage() {
       }
 
       setIsComplete(true);
-      toast.success('Data Berhasil Disimpan!', 'Data kesehatan anak telah tercatat. Rekomendasi intervensi telah diperbarui.', 7000);
+      toast.success('Data Berhasil Disimpan!', 'Status gizi telah diprediksi ulang (final) dan rekomendasi intervensi diperbarui.', 7000);
     } catch (err) {
       setSubmitError(err.message);
       toast.error('Gagal Menyimpan', err.message);
@@ -548,7 +548,7 @@ function ParentFormPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Formulir Berhasil Dikirim!</h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto mb-2">
                 Data kesehatan anak <strong>{selectedBalita?.nama || ''}</strong> telah berhasil disimpan.
-                Rekomendasi intervensi gizi telah diperbarui berdasarkan data yang Anda isi.
+                Status gizi telah diprediksi ulang menggunakan data lengkap (kader + orang tua) dan rekomendasi intervensi gizi telah diperbarui.
               </p>
               {isUpdatingRek && (
                 <p className="text-xs text-teal-600 flex items-center justify-center gap-1.5 mt-2">
@@ -562,7 +562,8 @@ function ParentFormPage() {
               <div className="bg-white rounded-2xl border border-gray-200 p-6">
                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <span className="w-5 h-5 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center text-[10px] font-bold">✓</span>
-                  Status Gizi {selectedBalita?.nama || 'Balita'} (Hasil Terbaru)
+                  Status Gizi {selectedBalita?.nama || 'Balita'}
+                  <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded normal-case tracking-normal">✨ Prediksi Final</span>
                 </h3>
                 <div className="grid grid-cols-3 gap-3">
                   {[

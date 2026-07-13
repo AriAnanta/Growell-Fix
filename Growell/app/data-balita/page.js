@@ -266,9 +266,51 @@ export default function ListDataBalita() {
                       <td className="py-3.5 px-5 text-sm text-gray-600 tabular-nums">
                         {item.tanggal_lahir ? new Date(item.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                       </td>
-                        <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbtb)}</td>
-                        <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_bbu)}</td>
-                        <td className="py-3.5 px-5 hidden lg:table-cell">{giziBadge(item.status_gizi_tbu)}</td>
+                        <td className="py-3.5 px-5 hidden lg:table-cell">
+                          <div className="flex flex-col gap-1">
+                            {giziBadge(item.status_gizi_bbtb)}
+                            {item.status_gizi_bbtb && !item.has_survey && (
+                              <span className="text-[9px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded inline-block w-fit" title="Prediksi sementara berdasarkan data antropometri saja. Akan diperbarui setelah orang tua mengisi kuesioner.">
+                                ⓘ Sementara
+                              </span>
+                            )}
+                            {item.status_gizi_bbtb && !!item.has_survey && (
+                              <span className="text-[9px] font-medium text-teal-600 bg-teal-50 border border-teal-200 px-1 py-0.5 rounded inline-block w-fit" title="Prediksi final berdasarkan data lengkap (kader + orang tua).">
+                                ✓ Final
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5 hidden lg:table-cell">
+                          <div className="flex flex-col gap-1">
+                            {giziBadge(item.status_gizi_bbu)}
+                            {item.status_gizi_bbu && !item.has_survey && (
+                              <span className="text-[9px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded inline-block w-fit">
+                                ⓘ Sementara
+                              </span>
+                            )}
+                            {item.status_gizi_bbu && !!item.has_survey && (
+                              <span className="text-[9px] font-medium text-teal-600 bg-teal-50 border border-teal-200 px-1 py-0.5 rounded inline-block w-fit">
+                                ✓ Final
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5 hidden lg:table-cell">
+                          <div className="flex flex-col gap-1">
+                            {giziBadge(item.status_gizi_tbu)}
+                            {item.status_gizi_tbu && !item.has_survey && (
+                              <span className="text-[9px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded inline-block w-fit">
+                                ⓘ Sementara
+                              </span>
+                            )}
+                            {item.status_gizi_tbu && !!item.has_survey && (
+                              <span className="text-[9px] font-medium text-teal-600 bg-teal-50 border border-teal-200 px-1 py-0.5 rounded inline-block w-fit">
+                                ✓ Final
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3.5 px-5 hidden lg:table-cell">
                           {item.rekomendasi_intervensi ? (
                             <div className="flex flex-col gap-1">

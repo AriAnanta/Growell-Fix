@@ -45,6 +45,33 @@ export async function predictNutritionStatusTA(data) {
   }
 }
 
+// ── ML Status Gizi (LightGBM) — separate service for final prediction ──
+const ML_STATUS_GIZI_URL = process.env.ML_STATUS_GIZI_URL || 'http://localhost:8001';
+
+const mlStatusGiziClient = axios.create({
+  baseURL: ML_STATUS_GIZI_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
+});
+
+/**
+ * Predict nutrition status using the ml_status_gizi LightGBM model.
+ * Called after parent fills the questionnaire (final prediction).
+ * @param {Object} featureData - flat dict of ALL features (kader + parent survey)
+ * @returns {{ status, total_data, predictions: [{ Prediksi_TBU, Prediksi_BBTB, Prediksi_BBU }] }}
+ */
+export async function predictStatusGiziFinal(featureData) {
+  try {
+    const response = await mlStatusGiziClient.post('/predict', {
+      data: [featureData],   // API expects List[Dict]
+    });
+    return response.data;
+  } catch (err) {
+    console.error('ML Status Gizi (final) prediction failed:', err.message);
+    return null;
+  }
+}
+
 /**
  * Get intervention recommendation
  */

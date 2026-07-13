@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
-import { predictNutritionStatusTA, getInterventionRecommendation, getMLInterventionRecommendation } from '@/lib/ml';
+import { predictStatusGiziFinal, predictNutritionStatusTA, getInterventionRecommendation, getMLInterventionRecommendation } from '@/lib/ml';
 
 /**
  * POST /api/predict
@@ -71,23 +71,27 @@ export async function POST(request) {
 
     const survey = surveyRows[0];
 
-    // 4. Build TA prediction payload from combined data
+    // 4. Build payload for ml_status_gizi (LightGBM — final prediction)
     const birthDate = new Date(balita.tanggal_lahir);
     const measureDate = new Date(measurement.tanggal_pengukuran);
     const ageMonths = Math.floor((measureDate - birthDate) / (1000 * 60 * 60 * 24 * 30.44));
 
-    const taPayload = {
+    // Build a flat feature dict with ALL available data from kader + parent survey.
+    // The ml_status_gizi model will pick the features it needs via its preprocessing pipeline.
+    const statusGiziPayload = {
+      // ── Kader measurement data ──
       umur_balita_bulan: ageMonths,
       jenis_kelamin: balita.jenis_kelamin,
       berat_badan_kg: measurement.berat_badan,
       tinggi_badan_cm: measurement.tinggi_badan,
       lingkar_kepala_cm: measurement.lingkar_kepala || null,
       lila_cm: measurement.lingkar_lengan || null,
-      tren_bb_bulan_lalu: null, // Could derive from previous measurements
+      tren_bb_bulan_lalu: measurement.kondisi_bb_bulan_lalu || null,
       usia_kehamilan_lahir: survey.usia_kehamilan_lahir,
       berat_lahir_kg: balita.berat_lahir,
       panjang_lahir_cm: balita.panjang_lahir,
       Tanggal_Lahir_Balita_kader: balita.tanggal_lahir,
+      // ── Parent survey data ──
       is_bblr: survey.is_bblr,
       is_prematur: survey.is_prematur,
       is_imd: survey.is_imd,
@@ -141,6 +145,7 @@ export async function POST(request) {
       is_ibu_bekerja: survey.is_ibu_bekerja,
       skor_pengetahuan_ibu: survey.skor_pengetahuan_ibu,
       skor_pola_asuh_makan: survey.skor_pola_asuh_makan,
+      pola_asuh_makan: survey.pola_asuh_makan,
       is_bpjs: survey.is_bpjs,
       is_perokok_di_rumah: survey.is_perokok_di_rumah,
       sumber_air_minum: survey.sumber_air_minum,
@@ -163,23 +168,38 @@ export async function POST(request) {
       pendapatan_bulanan: survey.pendapatan_bulanan,
       jarak_akses_pangan: survey.jarak_akses_pangan,
       is_pantangan_makan: survey.is_pantangan_makan,
-      Siapa_yang_biasanya_menentukan_makanan_apa_yang_dimakan_oleh_anak_di_rumah_: survey.penentu_makanan,
+      'Siapa yang biasanya menentukan makanan apa yang dimakan oleh anak di rumah? ': survey.penentu_makanan,
     };
 
-    // 5. Call ML prediction
-    const prediction = await predictNutritionStatusTA(taPayload);
+    // 5. Call ml_status_gizi (LightGBM) for final prediction
+    const prediction = await predictStatusGiziFinal(statusGiziPayload);
 
-    if (!prediction || !prediction.predictions) {
-      return NextResponse.json({
-        error: 'Gagal melakukan prediksi. Silakan coba lagi.',
-        detail: 'ML service returned null'
-      }, { status: 502 });
+    // Fallback to predict-ta if ml_status_gizi is unavailable
+    let statusBBTB, statusBBU, statusTBU;
+
+    if (prediction && prediction.predictions && prediction.predictions.length > 0) {
+      // ml_status_gizi returns: { predictions: [{ Prediksi_TBU, Prediksi_BBTB, Prediksi_BBU }] }
+      const p = prediction.predictions[0];
+      statusBBTB = p.Prediksi_BBTB || null;
+      statusBBU = p.Prediksi_BBU || null;
+      statusTBU = p.Prediksi_TBU || null;
+    } else {
+      // Fallback: try predict-ta from ml_baru
+      console.warn('ml_status_gizi unavailable, falling back to predict-ta');
+      const taPayload = { ...statusGiziPayload };
+      const taResult = await predictNutritionStatusTA(taPayload);
+      if (taResult && taResult.predictions) {
+        const tp = taResult.predictions;
+        statusBBTB = tp.status_gizi_bbtb?.label || null;
+        statusBBU = tp.status_gizi_bbu?.label || null;
+        statusTBU = tp.status_gizi_tbu?.label || null;
+      } else {
+        return NextResponse.json({
+          error: 'Gagal melakukan prediksi. Layanan ML tidak tersedia.',
+          detail: 'Both ml_status_gizi and predict-ta returned null'
+        }, { status: 502 });
+      }
     }
-
-    const p = prediction.predictions;
-    const statusBBTB = p.status_gizi_bbtb?.label || null;
-    const statusBBU = p.status_gizi_bbu?.label || null;
-    const statusTBU = p.status_gizi_tbu?.label || null;
 
     // 6. Get intervention recommendation
     let rekomendasi = null;

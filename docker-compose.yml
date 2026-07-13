@@ -146,6 +146,7 @@ services:
       - UPLOAD_DIR=./uploads
       - ML_FORECASTING_URL=http://ml-forecasting:8003
       - ML_FORECASTING_API_KEY=growell123
+      - ML_STATUS_GIZI_URL=http://ml-status-gizi:8000
     depends_on:
       db:
         condition: service_healthy
