@@ -14,7 +14,7 @@ services:
       MYSQL_USER: growell_user
       MYSQL_PASSWORD: growell_password_2024
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
