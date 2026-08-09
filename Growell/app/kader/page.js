@@ -1287,9 +1287,8 @@ function KaderDashboard() {
                               Proyeksi berdasarkan data pengukuran terakhir ({new Date(forecastResult.tanggal_acuan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}), usia {forecastResult.usia_bulan} bulan.
                             </p>
 
-                            <div className="h-[280px]">
-                              <ResponsiveContainer width="100%" height="100%">
-                                {(() => {
+                            <div className="flex flex-col gap-5">
+                              {(() => {
                                   const histAsc = (forecastResult.riwayat || []).map((h, idx, arr) => {
                                     const isLast = idx === arr.length - 1;
                                     return {
@@ -1315,23 +1314,45 @@ function KaderDashboard() {
                                   });
 
                                   const chartData = [...histAsc, ...forecastPoints];
+                                  const tooltipStyle = { borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' };
 
                                   return (
-                                    <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                                      <XAxis dataKey="tanggal" tickFormatter={formatDate} stroke="#94a3b8" fontSize={11} tickMargin={8} />
-                                      <YAxis yAxisId="left" stroke="#14b8a6" fontSize={11} tickFormatter={(v) => `${v}kg`} />
-                                      <YAxis yAxisId="right" orientation="right" stroke="#818cf8" fontSize={11} tickFormatter={(v) => `${v}cm`} />
-                                      <Tooltip labelFormatter={formatDate} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} />
-                                      <Legend wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
-                                      <Line yAxisId="left" type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
-                                      <Line yAxisId="right" type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
-                                      <Line yAxisId="left" type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
-                                      <Line yAxisId="right" type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
-                                    </LineChart>
+                                    <>
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Proyeksi Berat Badan</p>
+                                        <div className="h-[220px]">
+                                          <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                              <XAxis dataKey="tanggal" tickFormatter={formatDate} stroke="#94a3b8" fontSize={11} tickMargin={8} />
+                                              <YAxis stroke="#14b8a6" fontSize={11} tickFormatter={(v) => `${v}kg`} />
+                                              <Tooltip labelFormatter={formatDate} contentStyle={tooltipStyle} />
+                                              <Legend wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                                              <Line type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
+                                              <Line type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
+                                            </LineChart>
+                                          </ResponsiveContainer>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Proyeksi Tinggi Badan</p>
+                                        <div className="h-[220px]">
+                                          <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                              <XAxis dataKey="tanggal" tickFormatter={formatDate} stroke="#94a3b8" fontSize={11} tickMargin={8} />
+                                              <YAxis stroke="#818cf8" fontSize={11} tickFormatter={(v) => `${v}cm`} />
+                                              <Tooltip labelFormatter={formatDate} contentStyle={tooltipStyle} />
+                                              <Legend wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                                              <Line type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} connectNulls={false} />
+                                              <Line type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
+                                            </LineChart>
+                                          </ResponsiveContainer>
+                                        </div>
+                                      </div>
+                                    </>
                                   );
                                 })()}
-                              </ResponsiveContainer>
                             </div>
                           </div>
                         )}
