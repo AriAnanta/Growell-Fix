@@ -190,66 +190,82 @@ export default function StatusBalitaPage() {
                         <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2 mt-2">
                             <LineChartIcon size={20} className="text-sky-500" /> Grafik Pertumbuhan
                         </h3>
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-8 overflow-x-auto">
-                            <div className="min-w-[500px] h-[300px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    {(() => {
-                                        // Build ascending history series
-                                        const histAsc = [...history].reverse().map((h, idx, arr) => {
-                                            const isLast = idx === arr.length - 1;
-                                            return {
-                                                tanggal_pengukuran: h.tanggal_pengukuran,
-                                                berat_badan: h.berat_badan,
-                                                tinggi_badan: h.tinggi_badan,
-                                                // Connect projection line starting from the last actual point
-                                                berat_proyeksi: isLast ? h.berat_badan : null,
-                                                tinggi_proyeksi: isLast ? h.tinggi_badan : null,
-                                            };
-                                        });
+                        <div className="flex flex-col gap-4 mb-8">
+                            {(() => {
+                                // Build ascending history series
+                                const histAsc = [...history].reverse().map((h, idx, arr) => {
+                                    const isLast = idx === arr.length - 1;
+                                    return {
+                                        tanggal_pengukuran: h.tanggal_pengukuran,
+                                        berat_badan: h.berat_badan,
+                                        tinggi_badan: h.tinggi_badan,
+                                        // Connect projection line starting from the last actual point
+                                        berat_proyeksi: isLast ? h.berat_badan : null,
+                                        tinggi_proyeksi: isLast ? h.tinggi_badan : null,
+                                    };
+                                });
 
-                                        // Append forecast points (t+1..t+6) with computed future dates
-                                        let forecastPoints = [];
-                                        if (forecast?.eligible && forecast.prediksi?.length > 0) {
-                                            const baseDate = new Date(forecast.tanggal_acuan);
-                                            forecastPoints = forecast.prediksi.map((p, idx) => {
-                                                const d = new Date(baseDate);
-                                                d.setMonth(d.getMonth() + (idx + 1));
-                                                return {
-                                                    tanggal_pengukuran: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-                                                    berat_badan: null,
-                                                    tinggi_badan: null,
-                                                    berat_proyeksi: p.bb,
-                                                    tinggi_proyeksi: p.tb,
-                                                };
-                                            });
-                                        }
+                                // Append forecast points (t+1..t+6) with computed future dates
+                                let forecastPoints = [];
+                                if (forecast?.eligible && forecast.prediksi?.length > 0) {
+                                    const baseDate = new Date(forecast.tanggal_acuan);
+                                    forecastPoints = forecast.prediksi.map((p, idx) => {
+                                        const d = new Date(baseDate);
+                                        d.setMonth(d.getMonth() + (idx + 1));
+                                        return {
+                                            tanggal_pengukuran: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+                                            berat_badan: null,
+                                            tinggi_badan: null,
+                                            berat_proyeksi: p.bb,
+                                            tinggi_proyeksi: p.tb,
+                                        };
+                                    });
+                                }
 
-                                        const chartData = [...histAsc, ...forecastPoints];
+                                const chartData = [...histAsc, ...forecastPoints];
+                                const tooltipStyle = { borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' };
 
-                                        return (
-                                            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                                <XAxis dataKey="tanggal_pengukuran" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} tickMargin={10} />
-                                                <YAxis yAxisId="left" stroke="#14b8a6" fontSize={12} tickFormatter={(val) => `${val}kg`} />
-                                                <YAxis yAxisId="right" orientation="right" stroke="#6366f1" fontSize={12} tickFormatter={(val) => `${val}cm`} />
-                                                <Tooltip
-                                                    labelFormatter={formatDate}
-                                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                                                />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                <Line yAxisId="left" type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
-                                                <Line yAxisId="right" type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
-                                                {forecastPoints.length > 0 && (
-                                                    <>
-                                                        <Line yAxisId="left" type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
-                                                        <Line yAxisId="right" type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
-                                                    </>
-                                                )}
-                                            </LineChart>
-                                        );
-                                    })()}
-                                </ResponsiveContainer>
-                            </div>
+                                return (
+                                    <>
+                                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 overflow-x-auto">
+                                            <h4 className="text-sm font-bold text-slate-700 mb-3">Proyeksi Berat Badan</h4>
+                                            <div className="min-w-[320px] h-[260px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                                        <XAxis dataKey="tanggal_pengukuran" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} tickMargin={10} />
+                                                        <YAxis stroke="#14b8a6" fontSize={12} tickFormatter={(val) => `${val}kg`} />
+                                                        <Tooltip labelFormatter={formatDate} contentStyle={tooltipStyle} />
+                                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                        <Line type="monotone" dataKey="berat_badan" name="Berat Badan (kg)" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, fill: '#14b8a6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
+                                                        {forecastPoints.length > 0 && (
+                                                            <Line type="monotone" dataKey="berat_proyeksi" name="Proyeksi Berat (kg)" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#14b8a6' }} connectNulls />
+                                                        )}
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 overflow-x-auto">
+                                            <h4 className="text-sm font-bold text-slate-700 mb-3">Proyeksi Tinggi Badan</h4>
+                                            <div className="min-w-[320px] h-[260px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                                        <XAxis dataKey="tanggal_pengukuran" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} tickMargin={10} />
+                                                        <YAxis stroke="#6366f1" fontSize={12} tickFormatter={(val) => `${val}cm`} />
+                                                        <Tooltip labelFormatter={formatDate} contentStyle={tooltipStyle} />
+                                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                        <Line type="monotone" dataKey="tinggi_badan" name="Tinggi Badan (cm)" stroke="#818cf8" strokeWidth={3} dot={{ r: 4, fill: '#818cf8', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls={false} />
+                                                        {forecastPoints.length > 0 && (
+                                                            <Line type="monotone" dataKey="tinggi_proyeksi" name="Proyeksi Tinggi (cm)" stroke="#818cf8" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#818cf8' }} connectNulls />
+                                                        )}
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                         {forecast?.eligible === false && (
                             <div className="bg-sky-50 border border-sky-200 text-sky-700 rounded-2xl p-4 text-sm font-medium flex items-start gap-2 mb-8 -mt-2">
